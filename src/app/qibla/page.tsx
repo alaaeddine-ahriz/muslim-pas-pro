@@ -73,7 +73,7 @@ export default function QiblaPage() {
         
         if (response === 'granted') {
           // iOS utilise deviceorientation
-          (window as Window).addEventListener('deviceorientation', handleOrientation);
+          window.addEventListener('deviceorientation', handleOrientation);
         } else {
           setError("L'autorisation pour la boussole a été refusée.");
         }
@@ -84,11 +84,13 @@ export default function QiblaPage() {
     } else {
       // Pour les autres navigateurs
       // Essayer d'abord deviceorientationabsolute qui est plus précis
-      if (typeof window !== 'undefined' && 'ondeviceorientationabsolute' in window) {
-        (window as Window).addEventListener('deviceorientationabsolute', handleAbsoluteOrientation as EventListener);
-      } else if (typeof window !== 'undefined') {
-        // Sinon utiliser deviceorientation standard
-        (window as Window).addEventListener('deviceorientation', handleOrientation);
+      if (typeof window !== 'undefined') {
+        if ('ondeviceorientationabsolute' in window) {
+          (window as any).addEventListener('deviceorientationabsolute', handleAbsoluteOrientation);
+        } else {
+          // Sinon utiliser deviceorientation standard
+          (window as any).addEventListener('deviceorientation', handleOrientation);
+        }
       }
     }
   };
