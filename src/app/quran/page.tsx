@@ -32,6 +32,8 @@ export default function QuranPage() {
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPlayingFullSurah, setIsPlayingFullSurah] = useState(false);
+  const [currentAyahIndex, setCurrentAyahIndex] = useState(0);
   const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
@@ -115,6 +117,9 @@ export default function QuranPage() {
       audioElement.pause();
     }
 
+    // Arrêter la lecture de la sourate complète si elle est en cours
+    setIsPlayingFullSurah(false);
+
     // Créer et jouer le nouvel audio
     const audio = new Audio(audioUrl);
     audio.onended = () => setPlayingAyah(null);
@@ -128,7 +133,51 @@ export default function QuranPage() {
     if (audioElement) {
       audioElement.pause();
       setPlayingAyah(null);
+      setIsPlayingFullSurah(false);
     }
+  };
+
+  const playNextAyah = () => {
+    if (!isPlayingFullSurah || currentAyahIndex >= ayahs.length - 1) {
+      setIsPlayingFullSurah(false);
+      setCurrentAyahIndex(0);
+      return;
+    }
+
+    const nextIndex = currentAyahIndex + 1;
+    const nextAyah = ayahs[nextIndex];
+    
+    if (audioElement) {
+      audioElement.pause();
+    }
+    
+    const audio = new Audio(nextAyah.audio);
+    audio.onended = playNextAyah;
+    audio.play();
+    
+    setAudioElement(audio);
+    setPlayingAyah(nextAyah.number);
+    setCurrentAyahIndex(nextIndex);
+  };
+
+  const handlePlayFullSurah = () => {
+    if (ayahs.length === 0) return;
+    
+    // Arrêter l'audio en cours si nécessaire
+    if (audioElement) {
+      audioElement.pause();
+    }
+    
+    setIsPlayingFullSurah(true);
+    setCurrentAyahIndex(0);
+    
+    const firstAyah = ayahs[0];
+    const audio = new Audio(firstAyah.audio);
+    audio.onended = playNextAyah;
+    audio.play();
+    
+    setAudioElement(audio);
+    setPlayingAyah(firstAyah.number);
   };
 
   const renderSurahsList = () => (
@@ -201,7 +250,16 @@ export default function QuranPage() {
             <FaBookOpen className="mr-1" />
             <span>{selectedSurah?.revelationType === 'Meccan' ? 'Révélée à La Mecque' : 'Révélée à Médine'}</span>
           </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400">Sourate {selectedSurah?.number}</div>
+          <div className="flex items-center">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mr-3">Sourate {selectedSurah?.number}</div>
+            <button
+              onClick={isPlayingFullSurah ? handleStopAudio : handlePlayFullSurah}
+              className="flex items-center px-3 py-1 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/80 transition-colors"
+            >
+              {isPlayingFullSurah ? <FaPause size={12} className="mr-1" /> : <FaPlay size={12} className="mr-1" />}
+              <span className="text-sm font-medium">{isPlayingFullSurah ? 'Arrêter' : 'Lecture complète'}</span>
+            </button>
+          </div>
         </div>
       </div>
 

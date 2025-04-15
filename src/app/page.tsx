@@ -205,37 +205,37 @@ export default function Home() {
 
       {prayerTimes && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm dark:shadow-gray-950/50">
-          <h2 className="text-xl font-medium text-gray-700 dark:text-gray-200 mb-4">Horaires des prières</h2>
-          <div className="space-y-4">
-            <div className={`flex justify-between items-center p-3 rounded-lg ${isPrayerActive(prayerTimes.fajr) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
+          <h2 className="text-xl font-medium text-gray-700 dark:text-gray-200 mb-3">Horaires des prières</h2>
+          <div className="space-y-2">
+            <div className={`flex justify-between items-center p-2 rounded-lg ${isPrayerActive(prayerTimes.fajr) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
               <div className="flex items-center">
                 <span className={`font-medium ${isPrayerActive(prayerTimes.fajr) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>Fajr</span>
               </div>
               <span className={`text-lg font-medium ${isPrayerActive(prayerTimes.fajr) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>{formatTime(prayerTimes.fajr)}</span>
             </div>
             
-            <div className={`flex justify-between items-center p-3 rounded-lg ${isPrayerActive(prayerTimes.dhuhr) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
+            <div className={`flex justify-between items-center p-2 rounded-lg ${isPrayerActive(prayerTimes.dhuhr) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
               <div className="flex items-center">
                 <span className={`font-medium ${isPrayerActive(prayerTimes.dhuhr) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>Dhuhr</span>
               </div>
               <span className={`text-lg font-medium ${isPrayerActive(prayerTimes.dhuhr) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>{formatTime(prayerTimes.dhuhr)}</span>
             </div>
             
-            <div className={`flex justify-between items-center p-3 rounded-lg ${isPrayerActive(prayerTimes.asr) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
+            <div className={`flex justify-between items-center p-2 rounded-lg ${isPrayerActive(prayerTimes.asr) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
               <div className="flex items-center">
                 <span className={`font-medium ${isPrayerActive(prayerTimes.asr) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>Asr</span>
               </div>
               <span className={`text-lg font-medium ${isPrayerActive(prayerTimes.asr) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>{formatTime(prayerTimes.asr)}</span>
             </div>
             
-            <div className={`flex justify-between items-center p-3 rounded-lg ${isPrayerActive(prayerTimes.maghrib) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
+            <div className={`flex justify-between items-center p-2 rounded-lg ${isPrayerActive(prayerTimes.maghrib) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
               <div className="flex items-center">
                 <span className={`font-medium ${isPrayerActive(prayerTimes.maghrib) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>Maghrib</span>
               </div>
               <span className={`text-lg font-medium ${isPrayerActive(prayerTimes.maghrib) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>{formatTime(prayerTimes.maghrib)}</span>
             </div>
             
-            <div className={`flex justify-between items-center p-3 rounded-lg ${isPrayerActive(prayerTimes.isha) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
+            <div className={`flex justify-between items-center p-2 rounded-lg ${isPrayerActive(prayerTimes.isha) ? 'bg-emerald-50 dark:bg-emerald-900/20' : ''}`}>
               <div className="flex items-center">
                 <span className={`font-medium ${isPrayerActive(prayerTimes.isha) ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'}`}>Isha</span>
               </div>

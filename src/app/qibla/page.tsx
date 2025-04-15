@@ -170,8 +170,8 @@ export default function QiblaPage() {
 
   return (
     <div className="px-4 py-6">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Direction de la Qibla</h1>
+      <div className="text-center mb-5">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Direction de la Qibla</h1>
         <p className="text-gray-600 dark:text-gray-400">Tournez-vous vers la Kaaba pour prier</p>
       </div>
       
@@ -235,21 +235,6 @@ export default function QiblaPage() {
                 </div>
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
                   <div className="text-gray-600 dark:text-gray-400 font-semibold">E</div>
-                </div>
-                
-                {/* Flèche principale - tourne avec le téléphone */}
-                <div className="absolute inset-0 flex items-center justify-center" 
-                  style={{
-                    transform: `rotate(${compassHeading || 0}deg)`,
-                    transition: 'transform 0.2s ease-out'
-                  }}
-                >
-                  {/* Flèche rouge/verte */}
-                  <div className="relative h-full w-full">
-                    <div className={`absolute h-1/2 w-1 top-0 left-1/2 transform -translate-x-1/2 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    <div className={`absolute w-4 h-4 left-1/2 top-0 transform -translate-x-1/2 -translate-y-1/2 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-500' : 'bg-red-500'}`} style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
-                    <div className="absolute h-1/2 w-1 bottom-0 left-1/2 transform -translate-x-1/2 bg-gray-400"></div>
-                  </div>
                 </div>
                 
                 {/* Indicateur fixe de la Kaaba */}
