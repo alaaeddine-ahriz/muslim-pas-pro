@@ -324,28 +324,6 @@ export default function QiblaPage() {
                   </div>
                 </div>
                 
-                {/* Indicateur d'alignement */}
-                <div className="absolute bottom-4 flex justify-center w-full z-10">
-                  {isAligned ? (
-                    <div className="rounded-lg px-4 py-1.5 text-center bg-white/90 text-emerald-600 dark:text-emerald-400 shadow-md animate-bounce">
-                      <p className="font-semibold">Aligné avec la Qibla</p>
-                    </div>
-                  ) : null}
-                </div>
-                
-                {/* Kaaba au centre quand aligné */}
-                {isAligned && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-20 h-20 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center animate-pulse p-2">
-                      <img 
-                        src="/kaaba-icon.png" 
-                        alt="Kaaba"
-                        className="w-14 h-14 drop-shadow-lg"
-                      />
-                    </div>
-                  </div>
-                )}
-                
                 {/* Bouton de réinitialisation */}
                 <button 
                   onClick={reinitCompass}
