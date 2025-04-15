@@ -15,7 +15,8 @@ interface Surah {
 }
 
 interface Ayah {
-  number: number;
+  number: number | string;
+  numberInSurah: number;
   text: string;
   audio: string;
   translation?: string;
@@ -100,6 +101,22 @@ export default function QuranPage() {
     try {
       setLoadingAyahs(true);
       
+      // Réinitialiser l'audio en cours si nécessaire
+      if (audioElement) {
+        audioElement.pause();
+        setPlayingAyah(null);
+      }
+      
+      // Réinitialiser tous les états de lecture
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+      }
+      setIsPlayingFullSurah(false);
+      setCurrentAyahIndex(null);
+      currentIndexRef.current = 0;
+      setAudioProgress(0);
+      setCurrentAyah(null);
+      
       // Récupérer le texte arabe
       const arabicResponse = await axios.get(`https://api.alquran.cloud/v1/surah/${surahNumber}`);
       const arabicAyahs = arabicResponse.data.data.ayahs;
@@ -114,7 +131,8 @@ export default function QuranPage() {
       
       // Combiner les données
       const combinedAyahs = arabicAyahs.map((ayah: any, index: number) => ({
-        number: ayah.numberInSurah,
+        number: ayah.number.toString(), // Assurer que le numéro contient le numéro de surah
+        numberInSurah: ayah.numberInSurah,
         text: ayah.text,
         translation: frenchAyahs[index].text,
         audio: audioAyahs[index].audio,
@@ -153,27 +171,10 @@ export default function QuranPage() {
   };
 
   const handleSurahSelect = (surah: Surah) => {
-    // Arrêter l'audio en cours si nécessaire
-    if (audioElement) {
-      audioElement.pause();
-      setPlayingAyah(null);
-    }
-    
-    // Réinitialiser la référence audio de lecture complète également
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
-    }
-    
-    // Réinitialiser les états de lecture
-    setIsPlayingFullSurah(false);
-    setCurrentAyahIndex(null);
-    currentIndexRef.current = 0;
-    setAudioProgress(0);
-    setCurrentAyah(null);
-    
     // Mettre à jour la sourate sélectionnée
     setSelectedSurah(surah);
+    
+    // Charger les versets (fetchAyahs contient maintenant toute la logique de réinitialisation)
     fetchAyahs(surah.number);
     
     // Précharger les audios
@@ -194,7 +195,7 @@ export default function QuranPage() {
           const nextIndex = currentAyahIndex + 1;
           if (nextIndex < ayahs.length) {
             const nextAyah = ayahs[nextIndex];
-            playAyah(nextAyah.audio, nextAyah.number);
+            playAyah(nextAyah.audio, nextAyah.numberInSurah);
             setCurrentAyahIndex(nextIndex);
           }
         }
@@ -370,14 +371,17 @@ export default function QuranPage() {
       // Mettre à jour la source audio
       const ayah = ayahs[index];
       const reciterBaseUrl = reciters.find(r => r.identifier === selectedReciter)?.identifier || 'ar.alafasy';
+      
+      // Utiliser le numéro complet (ayah.number contient déjà le format 'surahNumber:ayahNumber')
       const audioUrl = `https://cdn.islamic.network/quran/audio/128/${reciterBaseUrl}/${ayah.number}.mp3`;
+      
       currentAudioRef.current.src = audioUrl;
       
-      // Highlight le verset actuel
-      setCurrentAyah(ayah.number);
+      // Highlight le verset actuel en utilisant le numéro dans la sourate
+      setCurrentAyah(ayah.numberInSurah);
       
       // Scroll vers le verset en cours
-      const verseElement = document.getElementById(`verse-${ayah.number}`);
+      const verseElement = document.getElementById(`verse-${ayah.numberInSurah}`);
       if (verseElement) {
         verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
@@ -493,7 +497,7 @@ export default function QuranPage() {
 
   // Fonction pour obtenir l'URL audio d'une ayah spécifique
   const getAudioUrl = (surahNumber: number, ayahNumber: number, reciter: string): string => {
-    return `https://cdn.islamic.network/quran/audio/${reciter}/${surahNumber}/${ayahNumber}.mp3`;
+    return `https://cdn.islamic.network/quran/audio/128/${reciter}/${surahNumber}:${ayahNumber}.mp3`;
   };
 
   // Fonctions pour gérer l'état de lecture
@@ -674,18 +678,17 @@ export default function QuranPage() {
       ) : (
         <div className="space-y-6">
           {ayahs.map((ayah) => (
-            <div key={ayah.number} className="pb-4 border-b border-gray-100 dark:border-gray-800">
+            <div key={ayah.number.toString()} className="pb-4 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-800/50 text-xs font-medium text-emerald-600 dark:text-emerald-400 mr-2">
-                    {ayah.number}
-                  </span>
-                </span>
+                <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium rounded-full w-8 h-8 flex items-center justify-center text-sm">
+                  {ayah.numberInSurah}
+                </div>
                 <button
-                  onClick={() => playingAyah === ayah.number ? handleStopAudio() : handlePlayAudio(ayah.audio, ayah.number)}
-                  className="w-7 h-7 flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/80 transition-colors"
+                  aria-label={playingAyah === ayah.numberInSurah ? "Pause" : "Play"}
+                  onClick={() => playingAyah === ayah.numberInSurah ? handleStopAudio() : handlePlayAudio(ayah.audio, ayah.numberInSurah)}
+                  className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2"
                 >
-                  {playingAyah === ayah.number ? <FaPause size={10} /> : <FaPlay size={10} />}
+                  {playingAyah === ayah.numberInSurah ? <FaPause size={10} /> : <FaPlay size={10} />}
                 </button>
               </div>
               <p className="text-right font-arabic text-xl leading-loose text-gray-800 dark:text-gray-200">{ayah.text}</p>
