@@ -354,10 +354,6 @@ export default function QuranPage() {
       currentAudioRef.current = new Audio();
     }
     
-    // Commencer la lecture
-    setIsPlayingFullSurah(true);
-    currentIndexRef.current = startIndex;
-    
     // Fonction pour jouer un verset spécifique
     const playVerse = (index: number) => {
       if (!selectedSurah || !currentAudioRef.current) return;
@@ -425,6 +421,10 @@ export default function QuranPage() {
         localStorage.setItem(`surah-${selectedSurah.number}-index`, index.toString());
       }
     };
+    
+    // Commencer la lecture
+    setIsPlayingFullSurah(true);
+    currentIndexRef.current = startIndex;
     
     // Commencer la lecture depuis l'index
     playVerse(startIndex);
