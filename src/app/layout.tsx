@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
+    viewportFit: 'cover'
   },
 };
 
@@ -42,6 +43,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Muslim Prayer App" />
         <meta name="theme-color" content="#10b981" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         
         <script
           dangerouslySetInnerHTML={{
@@ -64,7 +66,7 @@ export default function RootLayout({
       </head>
       <body className={`${rubik.className} bg-gray-50 dark:bg-gray-900 transition-colors duration-200`}>
         <ThemeProvider>
-          <main className="max-w-md mx-auto min-h-screen pb-20 relative">
+          <main className="max-w-md mx-auto min-h-screen pb-20 safe-area-bottom relative">
             {children}
             <BottomNavigation />
           </main>
