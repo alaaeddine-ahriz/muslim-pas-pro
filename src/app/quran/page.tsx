@@ -21,6 +21,12 @@ interface Ayah {
   translation?: string;
 }
 
+interface Reciter {
+  identifier: string;
+  name: string;
+  arabicName?: string;
+}
+
 export default function QuranPage() {
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [filteredSurahs, setFilteredSurahs] = useState<Surah[]>([]);
@@ -34,7 +40,18 @@ export default function QuranPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isPlayingFullSurah, setIsPlayingFullSurah] = useState(false);
   const [currentAyahIndex, setCurrentAyahIndex] = useState(0);
+  const [selectedReciter, setSelectedReciter] = useState<string>('ar.alafasy');
+  const [isReciterMenuOpen, setIsReciterMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  // Liste des récitateurs disponibles
+  const reciters: Reciter[] = [
+    { identifier: 'ar.alafasy', name: 'Mishary Rashid Alafasy', arabicName: 'مشاري راشد العفاسي' },
+    { identifier: 'ar.abdurrahmaansudais', name: 'Abdurrahmaan As-Sudais', arabicName: 'عبدالرحمن السديس' },
+    { identifier: 'ar.abdulbasitmurattal', name: 'Abdul Basit Murattal', arabicName: 'عبد الباسط عبد الصمد' },
+    { identifier: 'ar.mahermuaiqly', name: 'Maher Al Muaiqly', arabicName: 'ماهر المعيقلي' },
+    { identifier: 'ar.husary', name: 'Mahmoud Khalil Al-Husary', arabicName: 'محمود خليل الحصري' },
+  ];
 
   useEffect(() => {
     fetchSurahs();
@@ -80,8 +97,8 @@ export default function QuranPage() {
       const frenchResponse = await axios.get(`https://api.alquran.cloud/v1/surah/${surahNumber}/fr.hamidullah`);
       const frenchAyahs = frenchResponse.data.data.ayahs;
       
-      // Récupérer les audios (utiliser un récitateur populaire)
-      const audioResponse = await axios.get(`https://api.alquran.cloud/v1/surah/${surahNumber}/ar.alafasy`);
+      // Récupérer les audios du récitateur sélectionné
+      const audioResponse = await axios.get(`https://api.alquran.cloud/v1/surah/${surahNumber}/${selectedReciter}`);
       const audioAyahs = audioResponse.data.data.ayahs;
       
       // Combiner les données
@@ -211,15 +228,70 @@ export default function QuranPage() {
   };
 
   const handlePlayFullSurah = () => {
-    if (ayahs.length === 0) return;
+    if (!selectedSurah) return;
     
-    // Marquer comme étant en mode lecture complète
-    setIsPlayingFullSurah(true);
-    setCurrentAyahIndex(0);
+    // Arrêter l'audio en cours si nécessaire
+    if (audioElement) {
+      audioElement.pause();
+    }
     
-    // Commencer par le premier verset
-    const firstAyah = ayahs[0];
-    playAyah(firstAyah.audio, firstAyah.number);
+    // URL de la sourate complète
+    const fullSurahUrl = `https://cdn.islamic.network/quran/audio-surah/128/${selectedReciter}/${selectedSurah.number}.mp3`;
+    
+    try {
+      const audio = new Audio(fullSurahUrl);
+      
+      audio.onended = () => {
+        setIsPlayingFullSurah(false);
+        setPlayingAyah(null);
+      };
+      
+      audio.onloadstart = () => {
+        console.log("Chargement de l'audio de la sourate complète");
+      };
+      
+      audio.onerror = (e) => {
+        console.error("Erreur lors du chargement de l'audio:", e);
+        setError("Impossible de charger l'audio de la sourate complète. Veuillez réessayer.");
+        setIsPlayingFullSurah(false);
+      };
+      
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          console.log("Lecture de la sourate complète");
+          setIsPlayingFullSurah(true);
+          // Nous ne mettons pas de playingAyah spécifique car c'est la sourate entière
+        }).catch(error => {
+          console.error("Erreur lors de la lecture:", error);
+          setError("Impossible de lire l'audio. Veuillez réessayer.");
+          setIsPlayingFullSurah(false);
+        });
+      }
+      
+      setAudioElement(audio);
+    } catch (error) {
+      console.error("Erreur lors de la création de l'audio:", error);
+      setError("Impossible de lire l'audio. Veuillez réessayer.");
+    }
+  };
+
+  // Fonction pour gérer le changement de récitateur
+  const handleReciterChange = (reciterId: string) => {
+    setSelectedReciter(reciterId);
+    setIsReciterMenuOpen(false);
+    
+    // Si une sourate est déjà sélectionnée, recharger ses versets avec le nouveau récitateur
+    if (selectedSurah) {
+      // Arrêter l'audio en cours si nécessaire
+      if (audioElement) {
+        audioElement.pause();
+        setPlayingAyah(null);
+        setIsPlayingFullSurah(false);
+      }
+      
+      fetchAyahs(selectedSurah.number);
+    }
   };
 
   const renderSurahsList = () => (
@@ -292,15 +364,48 @@ export default function QuranPage() {
             <FaBookOpen className="mr-1" />
             <span>{selectedSurah?.revelationType === 'Meccan' ? 'Révélée à La Mecque' : 'Révélée à Médine'}</span>
           </div>
-          <div className="flex items-center">
-            <div className="text-sm text-gray-500 dark:text-gray-400 mr-3">Sourate {selectedSurah?.number}</div>
-            <button
-              onClick={isPlayingFullSurah ? handleStopAudio : handlePlayFullSurah}
-              className="flex items-center px-3 py-1 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/80 transition-colors"
-            >
-              {isPlayingFullSurah ? <FaPause size={12} className="mr-1" /> : <FaPlay size={12} className="mr-1" />}
-              <span className="text-sm font-medium">{isPlayingFullSurah ? 'Arrêter' : 'Lecture complète'}</span>
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center">
+            <div className="relative mb-2 sm:mb-0 sm:mr-3">
+              <button
+                onClick={() => setIsReciterMenuOpen(!isReciterMenuOpen)}
+                className="flex items-center px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+              >
+                <span>
+                  {reciters.find(r => r.identifier === selectedReciter)?.name || 'Récitateur'}
+                </span>
+                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+              
+              {isReciterMenuOpen && (
+                <div className="absolute right-0 mt-1 z-10 w-48 bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                  {reciters.map(reciter => (
+                    <button
+                      key={reciter.identifier}
+                      onClick={() => handleReciterChange(reciter.identifier)}
+                      className={`w-full text-left px-3 py-2 text-sm ${selectedReciter === reciter.identifier ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    >
+                      <div>{reciter.name}</div>
+                      {reciter.arabicName && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-arabic">{reciter.arabicName}</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center">
+              <div className="text-sm text-gray-500 dark:text-gray-400 mr-3">Sourate {selectedSurah?.number}</div>
+              <button
+                onClick={isPlayingFullSurah ? handleStopAudio : handlePlayFullSurah}
+                className="flex items-center px-3 py-1 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/80 transition-colors"
+              >
+                {isPlayingFullSurah ? <FaPause size={12} className="mr-1" /> : <FaPlay size={12} className="mr-1" />}
+                <span className="text-sm font-medium">{isPlayingFullSurah ? 'Arrêter' : 'Lecture complète'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
