@@ -153,17 +153,31 @@ export default function QuranPage() {
   };
 
   const handleSurahSelect = (surah: Surah) => {
-    setSelectedSurah(surah);
-    fetchAyahs(surah.number);
-    
-    // Précharger les audios
-    prechargeSurahAudio(surah.number);
-    
     // Arrêter l'audio en cours si nécessaire
     if (audioElement) {
       audioElement.pause();
       setPlayingAyah(null);
     }
+    
+    // Réinitialiser la référence audio de lecture complète également
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    
+    // Réinitialiser les états de lecture
+    setIsPlayingFullSurah(false);
+    setCurrentAyahIndex(null);
+    currentIndexRef.current = 0;
+    setAudioProgress(0);
+    setCurrentAyah(null);
+    
+    // Mettre à jour la sourate sélectionnée
+    setSelectedSurah(surah);
+    fetchAyahs(surah.number);
+    
+    // Précharger les audios
+    prechargeSurahAudio(surah.number);
   };
 
   // Ajouter un useEffect pour gérer la lecture continue
@@ -302,8 +316,14 @@ export default function QuranPage() {
       return;
     }
     
-    // Si l'audio est déjà créé mais en pause, simplement reprendre la lecture
-    if (currentAudioRef.current && currentIndexRef.current !== null) {
+    // Vérifier si l'audio actuel est de la même sourate
+    const isSameSurah = currentAudioRef.current?.src && 
+                      selectedSurah && 
+                      ayahs.length > 0 && 
+                      currentAudioRef.current.src.includes(`/${ayahs[0].number.toString().split(':')[0]}/`);
+                      
+    // Si l'audio est déjà créé pour la sourate actuelle et en pause, simplement reprendre la lecture
+    if (currentAudioRef.current && !currentAudioRef.current.ended && currentIndexRef.current !== null && isSameSurah) {
       currentAudioRef.current.play().catch(err => {
         console.error('Erreur de reprise audio:', err);
         setIsPlayingFullSurah(false);
@@ -312,16 +332,20 @@ export default function QuranPage() {
       return;
     }
     
-    // Récupérer l'index sauvegardé ou commencer au début
+    // Si on est sur une nouvelle sourate ou l'audio a été réinitialisé, on recommence du début
     let startIndex = 0;
-    const savedIndex = localStorage.getItem(`surah-${selectedSurah.number}-index`);
     
-    if (savedIndex) {
-      startIndex = parseInt(savedIndex, 10);
+    // Ne récupérer l'index sauvegardé que s'il s'agit de la même sourate
+    if (selectedSurah) {
+      const savedIndex = localStorage.getItem(`surah-${selectedSurah.number}-index`);
       
-      // Si l'index est invalide ou à la fin, recommencer du début
-      if (isNaN(startIndex) || startIndex >= ayahs.length) {
-        startIndex = 0;
+      if (savedIndex && isSameSurah) {
+        startIndex = parseInt(savedIndex, 10);
+        
+        // Si l'index est invalide ou à la fin, recommencer du début
+        if (isNaN(startIndex) || startIndex >= ayahs.length) {
+          startIndex = 0;
+        }
       }
     }
     

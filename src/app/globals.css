@@ -4,6 +4,30 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .font-arabic {
+    font-family: 'Scheherazade New', serif;
+  }
+  
+  @keyframes pulse-slow {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* Classe pour la marge en bas pour éviter les conflits avec la barre iOS */
+  .safe-area-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 80px);
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
