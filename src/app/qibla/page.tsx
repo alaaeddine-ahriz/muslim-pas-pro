@@ -124,7 +124,8 @@ export default function QiblaPage() {
       setCompassHeading(event.webkitCompassHeading);
     } else if (event.alpha !== null) {
       // Android et autres navigateurs utilisent alpha (0-360)
-      setCompassHeading(event.alpha);
+      // On convertit pour avoir la même référence que webkitCompassHeading
+      setCompassHeading(360 - event.alpha);
     }
   };
 
@@ -216,6 +217,7 @@ export default function QiblaPage() {
             <div className="relative w-72 h-72">
               <div className="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="h-full w-full flex items-center justify-center">
+                  {/* Boussole qui tourne selon le compassHeading */}
                   <div 
                     className="relative w-full h-full"
                     style={{
@@ -239,20 +241,20 @@ export default function QiblaPage() {
                     <div className="absolute inset-0 flex items-center justify-center">
                       <FaCompass className="text-4xl text-gray-600 dark:text-gray-400" />
                     </div>
-                    
-                    <div 
-                      className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10"
-                      style={{
-                        transform: `translate(-50%, -50%) rotate(${qiblaAngle - (compassHeading || 0)}deg)`,
-                        transition: 'transform 0.3s ease-out'
-                      }}
-                    >
-                      <div className="relative">
-                        <div className="h-40 w-1 bg-emerald-500 dark:bg-emerald-400 absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full origin-bottom" />
-                        <div className="p-1 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white">
-                          <FaLocationArrow className="text-xl" />
-                        </div>
-                      </div>
+                  </div>
+                  
+                  {/* Flèche de la Qibla - fixe à l'angle calculé */}
+                  <div 
+                    className="absolute top-1/2 left-1/2 z-10"
+                    style={{
+                      transform: `rotate(${qiblaAngle - (compassHeading || 0)}deg) translateY(-30px)`,
+                      transformOrigin: 'bottom center',
+                      transition: 'transform 0.3s ease-out'
+                    }}
+                  >
+                    <div className="h-40 w-1 bg-emerald-500 dark:bg-emerald-400" />
+                    <div className="p-1 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white absolute bottom-0 left-1/2 transform -translate-x-1/2">
+                      <FaLocationArrow className="text-xl" />
                     </div>
                   </div>
                 </div>
