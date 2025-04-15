@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { FaPlay, FaPause, FaSearch, FaBookOpen, FaInfoCircle } from 'react-icons/fa';
+import { FaPlay, FaPause, FaSearch, FaBookOpen, FaInfoCircle, FaSun, FaMoon } from 'react-icons/fa';
 import axios from 'axios';
+import { useTheme } from '@/context/ThemeContext';
 
 interface Surah {
   number: number;
@@ -31,6 +32,9 @@ export default function QuranPage() {
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isPlayingFullSurah, setIsPlayingFullSurah] = useState(false);
+  const [currentAyahIndex, setCurrentAyahIndex] = useState(0);
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     fetchSurahs();
@@ -96,9 +100,36 @@ export default function QuranPage() {
     }
   };
 
+  // Préchargement des audios pour une meilleure expérience utilisateur
+  const prechargeSurahAudio = async (surahNumber: number) => {
+    try {
+      // On ne précharge que les 10 premiers versets pour économiser les ressources
+      const limit = 10;
+      const audioResponse = await axios.get(`https://api.alquran.cloud/v1/surah/${surahNumber}/ar.alafasy`);
+      const audioAyahs = audioResponse.data.data.ayahs.slice(0, limit);
+      
+      // Précharger silencieusement les audios
+      audioAyahs.forEach((ayah: any) => {
+        try {
+          const audioElement = new Audio();
+          audioElement.preload = 'auto';
+          audioElement.src = ayah.audio;
+          // Pas besoin d'ajouter à DOM ou de jouer
+        } catch (e) {
+          // Ignorer les erreurs de préchargement
+        }
+      });
+    } catch (e) {
+      // Ignorer les erreurs de préchargement
+    }
+  };
+
   const handleSurahSelect = (surah: Surah) => {
     setSelectedSurah(surah);
     fetchAyahs(surah.number);
+    
+    // Précharger les audios
+    prechargeSurahAudio(surah.number);
     
     // Arrêter l'audio en cours si nécessaire
     if (audioElement) {
@@ -107,40 +138,102 @@ export default function QuranPage() {
     }
   };
 
-  const handlePlayAudio = (audioUrl: string, ayahNumber: number) => {
-    // Arrêter l'audio en cours si nécessaire
-    if (audioElement) {
-      audioElement.pause();
-    }
-
-    // Créer et jouer le nouvel audio
-    const audio = new Audio(audioUrl);
-    audio.onended = () => setPlayingAyah(null);
-    audio.play();
+  // Ajouter un useEffect pour gérer la lecture continue
+  useEffect(() => {
+    // Cette fonction sera déclenchée lorsque le playingAyah change ou devient null
+    let timerId: NodeJS.Timeout | null = null;
     
-    setAudioElement(audio);
-    setPlayingAyah(ayahNumber);
+    // Si on est en mode lecture complète et qu'aucun verset n'est en cours de lecture
+    // (cela signifie que le verset précédent vient de se terminer)
+    if (isPlayingFullSurah && playingAyah === null && currentAyahIndex < ayahs.length - 1) {
+      // Attendre un court instant avant de passer au verset suivant (évite les problèmes de lecture)
+      timerId = setTimeout(() => {
+        const nextIndex = currentAyahIndex + 1;
+        if (nextIndex < ayahs.length) {
+          const nextAyah = ayahs[nextIndex];
+          playAyah(nextAyah.audio, nextAyah.number);
+          setCurrentAyahIndex(nextIndex);
+        }
+      }, 800);
+    }
+    
+    // Nettoyage du timer si le composant se démonte ou si l'état change
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [playingAyah, isPlayingFullSurah, currentAyahIndex, ayahs]);
+
+  // Fonction commune pour jouer un audio
+  const playAyah = (audioUrl: string, ayahNumber: number) => {
+    try {
+      // Arrêter l'audio en cours si nécessaire
+      if (audioElement) {
+        audioElement.pause();
+      }
+      
+      const audio = new Audio(audioUrl);
+      
+      // Quand l'audio se termine, mettre playingAyah à null
+      // Ce changement déclenchera le useEffect ci-dessus
+      audio.onended = () => {
+        setPlayingAyah(null);
+      };
+      
+      audio.play().catch(error => {
+        console.error("Erreur lors de la lecture audio:", error);
+        setPlayingAyah(null);
+      });
+      
+      setAudioElement(audio);
+      setPlayingAyah(ayahNumber);
+    } catch (error) {
+      console.error("Erreur lors de la création de l'audio:", error);
+      setPlayingAyah(null);
+    }
+  };
+
+  const handlePlayAudio = (audioUrl: string, ayahNumber: number) => {
+    // Arrêter la lecture de la sourate complète si elle est en cours
+    setIsPlayingFullSurah(false);
+    setCurrentAyahIndex(0);
+    
+    // Utiliser la fonction commune
+    playAyah(audioUrl, ayahNumber);
   };
 
   const handleStopAudio = () => {
     if (audioElement) {
       audioElement.pause();
       setPlayingAyah(null);
+      setIsPlayingFullSurah(false);
+      setCurrentAyahIndex(0);
     }
+  };
+
+  const handlePlayFullSurah = () => {
+    if (ayahs.length === 0) return;
+    
+    // Marquer comme étant en mode lecture complète
+    setIsPlayingFullSurah(true);
+    setCurrentAyahIndex(0);
+    
+    // Commencer par le premier verset
+    const firstAyah = ayahs[0];
+    playAyah(firstAyah.audio, firstAyah.number);
   };
 
   const renderSurahsList = () => (
     <div>
-      <div className="sticky top-0 z-10 bg-gray-50 pb-4">
+      <div className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 pb-4">
         <div className="relative mb-4">
           <input
             type="text"
             placeholder="Rechercher une sourate..."
-            className="w-full px-4 py-3 pl-10 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            className="w-full px-4 py-3 pl-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 focus:border-transparent text-gray-800 dark:text-gray-200"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
         </div>
       </div>
 
@@ -149,20 +242,20 @@ export default function QuranPage() {
           <button
             key={surah.number}
             onClick={() => handleSurahSelect(surah)}
-            className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+            className="flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mr-3">
-                <span className="text-sm font-medium text-emerald-600">{surah.number}</span>
+              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mr-3">
+                <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{surah.number}</span>
               </div>
               <div className="text-left">
-                <div className="font-medium text-gray-800">{surah.englishName}</div>
-                <div className="text-xs text-gray-500">{surah.englishNameTranslation}</div>
+                <div className="font-medium text-gray-800 dark:text-gray-200">{surah.englishName}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{surah.englishNameTranslation}</div>
               </div>
             </div>
             <div className="flex flex-col items-end">
-              <div className="text-right font-arabic text-xl text-gray-800">{surah.name}</div>
-              <div className="text-xs text-gray-500">{surah.numberOfAyahs} versets</div>
+              <div className="text-right font-arabic text-xl text-gray-800 dark:text-gray-200">{surah.name}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{surah.numberOfAyahs} versets</div>
             </div>
           </button>
         ))}
@@ -174,7 +267,7 @@ export default function QuranPage() {
     <div>
       <button
         onClick={() => setSelectedSurah(null)}
-        className="flex items-center mb-6 text-emerald-600 hover:text-emerald-700 transition-colors"
+        className="flex items-center mb-6 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
       >
         <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -182,52 +275,61 @@ export default function QuranPage() {
         Retour aux sourates
       </button>
       
-      <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">{selectedSurah?.englishName}</h2>
-            <p className="text-gray-500">{selectedSurah?.englishNameTranslation}</p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-950/50 p-5 mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+          <div className="mb-3 sm:mb-0">
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{selectedSurah?.englishName}</h2>
+            <p className="text-gray-500 dark:text-gray-400">{selectedSurah?.englishNameTranslation}</p>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-arabic mb-1">{selectedSurah?.name}</div>
-            <div className="text-sm text-gray-500">{selectedSurah?.numberOfAyahs} versets</div>
+          <div className="text-left sm:text-right">
+            <div className="text-2xl font-arabic mb-1 text-gray-800 dark:text-gray-200">{selectedSurah?.name}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{selectedSurah?.numberOfAyahs} versets</div>
           </div>
         </div>
         
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-          <div className="flex items-center text-sm text-gray-500">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-0">
             <FaBookOpen className="mr-1" />
             <span>{selectedSurah?.revelationType === 'Meccan' ? 'Révélée à La Mecque' : 'Révélée à Médine'}</span>
           </div>
-          <div className="text-sm text-gray-500">Sourate {selectedSurah?.number}</div>
+          <div className="flex items-center">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mr-3">Sourate {selectedSurah?.number}</div>
+            <button
+              onClick={isPlayingFullSurah ? handleStopAudio : handlePlayFullSurah}
+              className="flex items-center px-3 py-1 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/80 transition-colors"
+            >
+              {isPlayingFullSurah ? <FaPause size={12} className="mr-1" /> : <FaPlay size={12} className="mr-1" />}
+              <span className="text-sm font-medium">{isPlayingFullSurah ? 'Arrêter' : 'Lecture complète'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {loadingAyahs ? (
         <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 dark:border-emerald-400"></div>
         </div>
       ) : (
         <div className="space-y-4">
           {ayahs.map((ayah) => (
-            <div key={ayah.number} className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="p-4 bg-emerald-50 flex justify-between items-center">
+            <div key={ayah.number} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-950/50 overflow-hidden">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 flex justify-between items-center">
                 <div className="flex items-center">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center mr-2">
-                    <span className="text-xs font-medium text-emerald-600">{ayah.number}</span>
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-800/50 flex items-center justify-center mr-2">
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{ayah.number}</span>
                   </div>
-                  <span className="text-sm text-gray-600">Verset {ayah.number}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Verset {ayah.number}</span>
                 </div>
                 <button
                   onClick={() => playingAyah === ayah.number ? handleStopAudio() : handlePlayAudio(ayah.audio, ayah.number)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800/50 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-800/80 transition-colors"
                 >
                   {playingAyah === ayah.number ? <FaPause size={12} /> : <FaPlay size={12} />}
                 </button>
               </div>
               <div className="p-4">
-                <p className="text-right font-arabic text-xl leading-loose mb-4">{ayah.text}</p>
-                <p className="text-gray-700 text-sm leading-relaxed italic">{ayah.translation}</p>
+                <p className="text-right font-arabic text-xl leading-loose mb-4 text-gray-800 dark:text-gray-200">{ayah.text}</p>
+                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed italic">{ayah.translation}</p>
               </div>
             </div>
           ))}
@@ -247,14 +349,14 @@ export default function QuranPage() {
   if (error && !surahs.length) {
     return (
       <div className="px-4 py-6">
-        <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 shadow-sm flex items-start">
-          <FaInfoCircle className="text-red-500 mr-3 mt-1" />
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-xl mb-6 shadow-sm flex items-start">
+          <FaInfoCircle className="text-red-500 dark:text-red-400 mr-3 mt-1" />
           <div>
             <p className="font-medium mb-1">Erreur de chargement</p>
             <p>{error}</p>
             <button
               onClick={fetchSurahs}
-              className="mt-2 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="mt-2 bg-red-100 hover:bg-red-200 dark:bg-red-800/30 dark:hover:bg-red-800/50 text-red-700 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               Réessayer
             </button>
@@ -267,12 +369,12 @@ export default function QuranPage() {
   return (
     <div className="px-4 py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Le Saint Coran</h1>
-        <p className="text-gray-600">Explorer et écouter le Saint Coran</p>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Le Saint Coran</h1>
+        <p className="text-gray-600 dark:text-gray-400">Explorer et écouter le Saint Coran</p>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 shadow-sm">
+        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-xl mb-6 shadow-sm">
           <p>{error}</p>
         </div>
       )}
