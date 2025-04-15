@@ -215,87 +215,52 @@ export default function QiblaPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm dark:shadow-gray-950/50 mb-6">
           <div className="flex items-center justify-center">
             <div className="relative w-72 h-72">
-              {/* Boussole simplifiée */}
+              {/* Cercle de la boussole qui change de couleur quand aligné */}
               <div 
-                className={`absolute inset-0 rounded-full border-4 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}`}
+                className={`absolute inset-0 rounded-full border-4 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}`}
               >
-                <div className="h-full w-full flex items-center justify-center relative">
-                  {/* Points cardinaux fixes */}
-                  <div className="absolute top-3 left-1/2 transform -translate-x-1/2">
-                    <div className="text-gray-600 dark:text-gray-400 font-semibold">N</div>
+                {/* Lignes de repère Nord-Sud Est-Ouest */}
+                <div className="absolute h-full w-0.5 left-1/2 transform -translate-x-1/2 bg-gray-200 dark:bg-gray-700"></div>
+                <div className="absolute w-full h-0.5 top-1/2 transform -translate-y-1/2 bg-gray-200 dark:bg-gray-700"></div>
+                
+                {/* Points cardinaux */}
+                <div className="absolute top-2 left-1/2 transform -translate-x-1/2">
+                  <div className="text-gray-600 dark:text-gray-400 font-semibold">N</div>
+                </div>
+                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
+                  <div className="text-gray-600 dark:text-gray-400 font-semibold">S</div>
+                </div>
+                <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
+                  <div className="text-gray-600 dark:text-gray-400 font-semibold">O</div>
+                </div>
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                  <div className="text-gray-600 dark:text-gray-400 font-semibold">E</div>
+                </div>
+                
+                {/* Flèche principale - tourne avec le téléphone */}
+                <div className="absolute inset-0 flex items-center justify-center" 
+                  style={{
+                    transform: `rotate(${compassHeading || 0}deg)`,
+                    transition: 'transform 0.2s ease-out'
+                  }}
+                >
+                  {/* Flèche rouge/verte */}
+                  <div className="relative h-full w-full">
+                    <div className={`absolute h-1/2 w-1 top-0 left-1/2 transform -translate-x-1/2 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <div className={`absolute w-4 h-4 left-1/2 top-0 transform -translate-x-1/2 -translate-y-1/2 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-500' : 'bg-red-500'}`} style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }}></div>
+                    <div className="absolute h-1/2 w-1 bottom-0 left-1/2 transform -translate-x-1/2 bg-gray-400"></div>
                   </div>
-                  <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2">
-                    <div className="text-gray-600 dark:text-gray-400 font-semibold">S</div>
-                  </div>
-                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                    <div className="text-gray-600 dark:text-gray-400 font-semibold">O</div>
-                  </div>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <div className="text-gray-600 dark:text-gray-400 font-semibold">E</div>
-                  </div>
-                  
-                  {/* Indicateur de la Kaaba */}
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
-                    <div 
-                      className={`w-8 h-8 -mt-4 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-500 dark:bg-green-500' : 'bg-emerald-600 dark:bg-emerald-500'}`}
-                      style={{
-                        clipPath: 'polygon(0% 100%, 50% 0%, 100% 100%)'
-                      }}
-                    ></div>
-                  </div>
-                  
-                  {/* Image de la Kaaba */}
+                </div>
+                
+                {/* Indicateur fixe de la Kaaba */}
+                <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
                   <div 
-                    className="absolute"
+                    className={`w-6 h-6 -mt-3 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-500' : 'bg-black'}`}
                     style={{
                       transform: `rotate(${qiblaAngle - (compassHeading || 0)}deg)`,
-                      top: '10px',
-                      left: 'calc(50% - 15px)',
-                      width: '30px',
-                      height: '30px',
-                      transition: 'transform 0.3s ease-out'
-                    }}
-                  >
-                    <div className="bg-black w-full h-full flex items-center justify-center">
-                      <div className="w-3/4 h-1/2 border border-amber-400"></div>
-                    </div>
-                  </div>
-                  
-                  {/* Aiguille de la boussole */}
-                  <div 
-                    className="w-1 h-full bg-gray-300 dark:bg-gray-600 absolute"
-                    style={{
-                      transform: 'rotate(0deg)',
+                      clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)'
                     }}
                   ></div>
-                  <div 
-                    className="w-full h-1 bg-gray-300 dark:bg-gray-600 absolute"
-                    style={{
-                      transform: 'rotate(0deg)',
-                    }}
-                  ></div>
-                  
-                  {/* Flèche centrale */}
-                  <div 
-                    className={`absolute inset-0 flex items-center justify-center ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}
-                    style={{
-                      transform: `rotate(${compassHeading || 0}deg)`,
-                      transition: 'transform 0.3s ease-out'
-                    }}
-                  >
-                    <div className="relative w-48 h-48">
-                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-1 h-24 bg-current"></div>
-                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -mt-1">
-                        <div 
-                          className="w-6 h-6 bg-current"
-                          style={{
-                            clipPath: 'polygon(0% 100%, 50% 0%, 100% 100%)'
-                          }}
-                        ></div>
-                      </div>
-                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-24 bg-gray-400 dark:bg-gray-500"></div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
