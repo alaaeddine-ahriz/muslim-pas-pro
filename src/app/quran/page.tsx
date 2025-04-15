@@ -140,6 +140,7 @@ export default function QuranPage() {
   const playNextAyah = () => {
     if (!isPlayingFullSurah || currentAyahIndex >= ayahs.length - 1) {
       setIsPlayingFullSurah(false);
+      setPlayingAyah(null);
       setCurrentAyahIndex(0);
       return;
     }
@@ -153,7 +154,21 @@ export default function QuranPage() {
     
     const audio = new Audio(nextAyah.audio);
     audio.onended = playNextAyah;
-    audio.play();
+    
+    // S'assurer que l'audio se charge correctement avant de jouer
+    audio.addEventListener('canplaythrough', () => {
+      audio.play().catch(error => {
+        console.error("Erreur lors de la lecture audio:", error);
+        // Si la lecture échoue, passer au verset suivant
+        setTimeout(() => playNextAyah(), 1000);
+      });
+    });
+    
+    audio.addEventListener('error', () => {
+      console.error("Erreur de chargement audio pour le verset", nextAyah.number);
+      // En cas d'erreur de chargement, passer au verset suivant
+      setTimeout(() => playNextAyah(), 1000);
+    });
     
     setAudioElement(audio);
     setPlayingAyah(nextAyah.number);
@@ -174,7 +189,21 @@ export default function QuranPage() {
     const firstAyah = ayahs[0];
     const audio = new Audio(firstAyah.audio);
     audio.onended = playNextAyah;
-    audio.play();
+    
+    // S'assurer que l'audio se charge correctement avant de jouer
+    audio.addEventListener('canplaythrough', () => {
+      audio.play().catch(error => {
+        console.error("Erreur lors de la lecture audio:", error);
+        // Si la lecture échoue, passer au verset suivant
+        setTimeout(() => playNextAyah(), 1000);
+      });
+    });
+    
+    audio.addEventListener('error', () => {
+      console.error("Erreur de chargement audio pour le verset", firstAyah.number);
+      // En cas d'erreur de chargement, passer au verset suivant
+      setTimeout(() => playNextAyah(), 1000);
+    });
     
     setAudioElement(audio);
     setPlayingAyah(firstAyah.number);
@@ -234,19 +263,19 @@ export default function QuranPage() {
       </button>
       
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm dark:shadow-gray-950/50 p-5 mb-6">
-        <div className="flex justify-between items-start">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+          <div className="mb-3 sm:mb-0">
             <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">{selectedSurah?.englishName}</h2>
             <p className="text-gray-500 dark:text-gray-400">{selectedSurah?.englishNameTranslation}</p>
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <div className="text-2xl font-arabic mb-1 text-gray-800 dark:text-gray-200">{selectedSurah?.name}</div>
             <div className="text-sm text-gray-500 dark:text-gray-400">{selectedSurah?.numberOfAyahs} versets</div>
           </div>
         </div>
         
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-3 sm:mb-0">
             <FaBookOpen className="mr-1" />
             <span>{selectedSurah?.revelationType === 'Meccan' ? 'Révélée à La Mecque' : 'Révélée à Médine'}</span>
           </div>
