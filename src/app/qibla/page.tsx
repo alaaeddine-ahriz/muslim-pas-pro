@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Coordinates } from 'adhan';
-import { FaCompass, FaLocationArrow, FaMountain, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCompass, FaLocationArrow, FaMountain, FaExclamationTriangle, FaRedo } from 'react-icons/fa';
+import Image from 'next/image';
 
 // Coordonnées de la Kaaba
 const MECCA_COORDS = new Coordinates(21.4225, 39.8262);
@@ -20,6 +21,10 @@ export default function QiblaPage() {
   const [permissionState, setPermissionState] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [distance, setDistance] = useState<number | null>(null);
+  const [direction, setDirection] = useState<string>('N');
+  
+  const compassRef = useRef<HTMLDivElement>(null);
+  const arrowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Demander la localisation
@@ -57,9 +62,34 @@ export default function QiblaPage() {
     };
   }, []);
 
+  // Mettre à jour la rotation de la boussole et de la flèche quand les valeurs changent
+  useEffect(() => {
+    if (compassHeading !== null && compassRef.current) {
+      // Rotate la boussole dans le sens opposé de la direction
+      compassRef.current.style.transform = `rotate(${-compassHeading}deg)`;
+    }
+    
+    if (qiblaAngle !== null && compassHeading !== null && arrowRef.current) {
+      // Calculer l'angle relatif entre la direction de la boussole et la Qibla
+      const relativeAngle = qiblaAngle - compassHeading;
+      arrowRef.current.style.transform = `rotate(${relativeAngle}deg)`;
+      
+      // Mettre à jour la direction cardinale
+      updateDirection(compassHeading);
+    }
+  }, [compassHeading, qiblaAngle]);
+
+  const updateDirection = (heading: number) => {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+    const index = Math.round(heading / 45) % 8;
+    setDirection(directions[index]);
+  };
+
   const setupDeviceOrientation = async () => {
     // Vérifier si l'API DeviceOrientationEvent est disponible
-    if (typeof window === 'undefined' || !window.DeviceOrientationEvent) {
+    if (typeof window === 'undefined') return;
+    
+    if (!window.DeviceOrientationEvent) {
       setError("Votre appareil ne supporte pas la boussole.");
       return;
     }
@@ -84,13 +114,11 @@ export default function QiblaPage() {
     } else {
       // Pour les autres navigateurs
       // Essayer d'abord deviceorientationabsolute qui est plus précis
-      if (typeof window !== 'undefined') {
-        if ('ondeviceorientationabsolute' in window) {
-          (window as any).addEventListener('deviceorientationabsolute', handleAbsoluteOrientation);
-        } else {
-          // Sinon utiliser deviceorientation standard
-          (window as any).addEventListener('deviceorientation', handleOrientation);
-        }
+      if ('ondeviceorientationabsolute' in window) {
+        (window as any).addEventListener('deviceorientationabsolute', handleAbsoluteOrientation as EventListener);
+      } else {
+        // Sinon utiliser deviceorientation standard
+        (window as any).addEventListener('deviceorientation', handleOrientation);
       }
     }
   };
@@ -111,6 +139,11 @@ export default function QiblaPage() {
         setError("Erreur lors de la demande d'autorisation pour la boussole.");
       }
     }
+  };
+
+  // Réinitialiser la boussole
+  const reinitCompass = () => {
+    setupDeviceOrientation();
   };
 
   // Les gestionnaires d'événements pour l'orientation
@@ -216,60 +249,94 @@ export default function QiblaPage() {
       {qiblaAngle !== null && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm dark:shadow-gray-950/50 mb-6">
           <div className="flex items-center justify-center">
-            <div className="relative w-72 h-72">
-              {/* Cercle de la boussole qui change de couleur quand aligné */}
-              <div 
-                className={`absolute inset-0 rounded-full border-4 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'}`}
-              >
-                {/* Lignes de repère Nord-Sud Est-Ouest */}
-                <div className="absolute h-full w-0.5 left-1/2 transform -translate-x-1/2 bg-gray-200 dark:bg-gray-700"></div>
-                <div className="absolute w-full h-0.5 top-1/2 transform -translate-y-1/2 bg-gray-200 dark:bg-gray-700"></div>
-                
-                {/* Points cardinaux */}
-                <div className="absolute top-2 left-1/2 transform -translate-x-1/2">
-                  <div className="text-gray-600 dark:text-gray-400 font-semibold">N</div>
-                </div>
-                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2">
-                  <div className="text-gray-600 dark:text-gray-400 font-semibold">S</div>
-                </div>
-                <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
-                  <div className="text-gray-600 dark:text-gray-400 font-semibold">O</div>
-                </div>
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  <div className="text-gray-600 dark:text-gray-400 font-semibold">E</div>
+            <div className="relative w-80 h-80">
+              {/* Cercle de la boussole */}
+              <div className="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-700 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center shadow-inner">
+                {/* Boussole rotative */}
+                <div 
+                  ref={compassRef} 
+                  className="w-full h-full relative transition-transform duration-200 ease-linear"
+                >
+                  {/* Image de la boussole */}
+                  <div className="absolute inset-0 flex justify-center items-center">
+                    <div className="relative w-64 h-64">
+                      <img 
+                        src="/compass-rose.png" 
+                        alt="Compass Rose"
+                        className="w-full h-full object-contain drop-shadow-md"
+                      />
+                    </div>
+                  </div>
                 </div>
                 
-                {/* Indicateur fixe de la Kaaba */}
-                <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
-                  <div 
-                    className={`w-6 h-6 -mt-3 ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-500' : 'bg-black'}`}
-                    style={{
-                      transform: `rotate(${qiblaAngle - (compassHeading || 0)}deg)`,
-                      clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)'
-                    }}
-                  ></div>
+                {/* Direction textuelle actuelle */}
+                <div className="absolute top-4 flex justify-center w-full z-10">
+                  <div className="rounded-lg px-4 py-1.5 text-center bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 shadow-md backdrop-blur-sm">
+                    <p className="text-sm font-medium">{direction} <span className="text-xs ml-1 opacity-75">• {Math.round(compassHeading || 0)}°</span></p>
+                  </div>
                 </div>
+                
+                {/* Flèche d'indication de la Qibla fixe */}
+                <div 
+                  ref={arrowRef}
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 transition-transform duration-200 ease-linear"
+                >
+                  <div className="absolute inset-0 w-full h-full flex justify-center">
+                    <div className="relative">
+                      <img 
+                        src="/kaaba-icon.png" 
+                        alt="Kaaba Direction"
+                        className="absolute w-12 h-12 -top-30 left-1/2 transform -translate-x-1/2 drop-shadow-lg"
+                      />
+                    </div>
+                    <div className="absolute w-0.5 h-full bg-emerald-500 dark:bg-emerald-400 shadow-md"></div>
+                  </div>
+                </div>
+                
+                {/* Indicateur d'alignement */}
+                <div className="absolute bottom-4 flex justify-center w-full z-10">
+                  {Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? (
+                    <div className="rounded-lg px-4 py-1.5 text-center bg-green-500 text-white shadow-md animate-pulse">
+                      <p className="font-semibold">Aligné avec la Qibla</p>
+                    </div>
+                  ) : null}
+                </div>
+                
+                {/* Bouton de réinitialisation */}
+                <button 
+                  onClick={reinitCompass}
+                  className="absolute right-2 bottom-2 w-10 h-10 bg-white dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors z-10 shadow-md"
+                >
+                  <FaRedo size={16} />
+                </button>
               </div>
             </div>
           </div>
           
-          <div className="flex justify-center mt-4">
-            <div className={`rounded-lg px-4 py-2 text-center ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
+          <div className="flex justify-center mt-8 gap-6">
+            <div className="rounded-xl px-5 py-3 text-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 shadow-sm">
               <p className="text-xs opacity-75 mb-1">Direction de la Qibla</p>
-              <p className="text-lg font-semibold">{Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'Aligné' : `${Math.round(qiblaAngle)}°`}</p>
+              <p className="text-xl font-semibold">{Math.round(qiblaAngle)}°</p>
             </div>
+            
+            {distance !== null && (
+              <div className="rounded-xl px-5 py-3 text-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 shadow-sm">
+                <p className="text-xs opacity-75 mb-1">Distance</p>
+                <p className="text-xl font-semibold">{distance} km</p>
+              </div>
+            )}
           </div>
         </div>
       )}
       
-      <div className="bg-emerald-50 dark:bg-emerald-900/10 p-5 rounded-xl shadow-sm dark:shadow-gray-950/50">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-600 dark:to-teal-600 p-5 rounded-xl shadow-sm text-white">
         <div className="flex items-start">
-          <div className="bg-emerald-100 dark:bg-emerald-800/40 p-3 rounded-lg mr-4">
-            <FaMountain className="text-xl text-emerald-600 dark:text-emerald-400" />
+          <div className="bg-white/20 p-3 rounded-lg mr-4 backdrop-blur-sm">
+            <FaMountain className="text-xl" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">La Kaaba (الكعبة)</h3>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">
+            <h3 className="font-semibold mb-1">La Kaaba (الكعبة)</h3>
+            <p className="text-sm text-white/80">
               La Kaaba est une construction cubique située dans la cour de la Grande Mosquée de La Mecque en Arabie saoudite. C'est le lieu le plus sacré de l'islam et c'est vers la Kaaba que tous les musulmans se tournent pour prier cinq fois par jour.
             </p>
           </div>
