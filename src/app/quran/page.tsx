@@ -138,27 +138,51 @@ export default function QuranPage() {
     }
   };
 
-  const handlePlayAudio = (audioUrl: string, ayahNumber: number) => {
-    // Arrêter l'audio en cours si nécessaire
-    if (audioElement) {
-      audioElement.pause();
+  // Ajouter un useEffect pour gérer la lecture continue
+  useEffect(() => {
+    // Cette fonction sera déclenchée lorsque le playingAyah change ou devient null
+    let timerId: NodeJS.Timeout | null = null;
+    
+    // Si on est en mode lecture complète et qu'aucun verset n'est en cours de lecture
+    // (cela signifie que le verset précédent vient de se terminer)
+    if (isPlayingFullSurah && playingAyah === null && currentAyahIndex < ayahs.length - 1) {
+      // Attendre un court instant avant de passer au verset suivant (évite les problèmes de lecture)
+      timerId = setTimeout(() => {
+        const nextIndex = currentAyahIndex + 1;
+        if (nextIndex < ayahs.length) {
+          const nextAyah = ayahs[nextIndex];
+          playAyah(nextAyah.audio, nextAyah.number);
+          setCurrentAyahIndex(nextIndex);
+        }
+      }, 800);
     }
+    
+    // Nettoyage du timer si le composant se démonte ou si l'état change
+    return () => {
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [playingAyah, isPlayingFullSurah, currentAyahIndex, ayahs]);
 
-    // Arrêter la lecture de la sourate complète si elle est en cours
-    setIsPlayingFullSurah(false);
-
-    // Créer et jouer le nouvel audio
+  // Fonction commune pour jouer un audio
+  const playAyah = (audioUrl: string, ayahNumber: number) => {
     try {
-      const audio = new Audio(audioUrl);
-      audio.onended = () => setPlayingAyah(null);
-      
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error("Erreur lors de la lecture du verset:", error);
-          setPlayingAyah(null);
-        });
+      // Arrêter l'audio en cours si nécessaire
+      if (audioElement) {
+        audioElement.pause();
       }
+      
+      const audio = new Audio(audioUrl);
+      
+      // Quand l'audio se termine, mettre playingAyah à null
+      // Ce changement déclenchera le useEffect ci-dessus
+      audio.onended = () => {
+        setPlayingAyah(null);
+      };
+      
+      audio.play().catch(error => {
+        console.error("Erreur lors de la lecture audio:", error);
+        setPlayingAyah(null);
+      });
       
       setAudioElement(audio);
       setPlayingAyah(ayahNumber);
@@ -168,92 +192,34 @@ export default function QuranPage() {
     }
   };
 
+  const handlePlayAudio = (audioUrl: string, ayahNumber: number) => {
+    // Arrêter la lecture de la sourate complète si elle est en cours
+    setIsPlayingFullSurah(false);
+    setCurrentAyahIndex(0);
+    
+    // Utiliser la fonction commune
+    playAyah(audioUrl, ayahNumber);
+  };
+
   const handleStopAudio = () => {
     if (audioElement) {
       audioElement.pause();
       setPlayingAyah(null);
       setIsPlayingFullSurah(false);
-    }
-  };
-
-  const playNextAyah = () => {
-    if (!isPlayingFullSurah || currentAyahIndex >= ayahs.length - 1) {
-      setIsPlayingFullSurah(false);
-      setPlayingAyah(null);
       setCurrentAyahIndex(0);
-      return;
-    }
-
-    const nextIndex = currentAyahIndex + 1;
-    const nextAyah = ayahs[nextIndex];
-    
-    if (audioElement) {
-      audioElement.pause();
-    }
-    
-    try {
-      const audio = new Audio(nextAyah.audio);
-      audio.onended = playNextAyah;
-      
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log(`Lecture de l'ayah ${nextAyah.number}`);
-          })
-          .catch(error => {
-            console.error("Erreur lors de la lecture:", error);
-            // En cas d'erreur, passer au verset suivant après un court délai
-            setTimeout(() => playNextAyah(), 500);
-          });
-      }
-      
-      setAudioElement(audio);
-      setPlayingAyah(nextAyah.number);
-      setCurrentAyahIndex(nextIndex);
-    } catch (error) {
-      console.error("Erreur lors de la création de l'audio:", error);
-      // En cas d'erreur, passer au verset suivant après un court délai
-      setTimeout(() => playNextAyah(), 500);
     }
   };
 
   const handlePlayFullSurah = () => {
     if (ayahs.length === 0) return;
     
-    // Arrêter l'audio en cours si nécessaire
-    if (audioElement) {
-      audioElement.pause();
-    }
-    
+    // Marquer comme étant en mode lecture complète
     setIsPlayingFullSurah(true);
     setCurrentAyahIndex(0);
     
-    try {
-      const firstAyah = ayahs[0];
-      const audio = new Audio(firstAyah.audio);
-      audio.onended = playNextAyah;
-      
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            console.log(`Lecture de l'ayah ${firstAyah.number}`);
-          })
-          .catch(error => {
-            console.error("Erreur lors de la lecture:", error);
-            // En cas d'erreur, passer au verset suivant après un court délai
-            setTimeout(() => playNextAyah(), 500);
-          });
-      }
-      
-      setAudioElement(audio);
-      setPlayingAyah(firstAyah.number);
-    } catch (error) {
-      console.error("Erreur lors de la création de l'audio:", error);
-      // En cas d'erreur, passer au verset suivant après un court délai
-      setTimeout(() => playNextAyah(), 500);
-    }
+    // Commencer par le premier verset
+    const firstAyah = ayahs[0];
+    playAyah(firstAyah.audio, firstAyah.number);
   };
 
   const renderSurahsList = () => (
