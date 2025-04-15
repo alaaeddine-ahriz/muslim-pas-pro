@@ -243,18 +243,34 @@ export default function QiblaPage() {
                     </div>
                   </div>
                   
-                  {/* Flèche de la Qibla - fixe à l'angle calculé */}
+                  {/* Marqueur fixe indiquant la direction de la Qibla sur le cercle */}
                   <div 
-                    className="absolute top-1/2 left-1/2 z-10"
+                    className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20"
                     style={{
-                      transform: `rotate(${qiblaAngle - (compassHeading || 0)}deg) translateY(-30px)`,
+                      transform: `rotate(${qiblaAngle - (compassHeading || 0)}deg) translateX(-50%)`,
                       transformOrigin: 'bottom center',
                       transition: 'transform 0.3s ease-out'
                     }}
                   >
-                    <div className="h-40 w-1 bg-emerald-500 dark:bg-emerald-400" />
-                    <div className="p-1 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white absolute bottom-0 left-1/2 transform -translate-x-1/2">
-                      <FaLocationArrow className="text-xl" />
+                    <div className={`w-3 h-3 rounded-full ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'bg-green-500 shadow-lg shadow-green-300 dark:shadow-green-700' : 'bg-emerald-500 dark:bg-emerald-400'}`} />
+                  </div>
+                  
+                  {/* Flèche toujours visible au centre, pointant vers la Qibla */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                    <div 
+                      className={`w-56 h-56 rounded-full border-2 border-dashed ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'border-green-500 dark:border-green-400' : 'border-emerald-400 dark:border-emerald-500'} opacity-30`}
+                    />
+                    <div 
+                      className="absolute"
+                      style={{
+                        transform: `rotate(${qiblaAngle - (compassHeading || 0)}deg)`,
+                        transition: 'transform 0.3s ease-out'
+                      }}
+                    >
+                      <div className={`h-24 flex flex-col items-center justify-center ${Math.abs((qiblaAngle - (compassHeading || 0)) % 360) < 5 || Math.abs((qiblaAngle - (compassHeading || 0)) % 360) > 355 ? 'text-green-500 dark:text-green-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        <FaLocationArrow size={24} />
+                        <div className="mt-1 text-xs font-medium">Qibla</div>
+                      </div>
                     </div>
                   </div>
                 </div>

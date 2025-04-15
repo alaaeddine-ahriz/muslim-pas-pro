@@ -268,21 +268,9 @@ export default function QuranPage() {
 
   return (
     <div className="px-4 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Le Saint Coran</h1>
-          <p className="text-gray-600 dark:text-gray-400">Explorer et écouter le Saint Coran</p>
-        </div>
-        <button 
-          className="bg-white dark:bg-gray-800 rounded-full p-3 shadow-sm dark:shadow-gray-950/50 transition-colors"
-          onClick={toggleTheme}
-        >
-          {theme === 'dark' ? (
-            <FaSun className="text-2xl text-amber-400" />
-          ) : (
-            <FaMoon className="text-2xl text-indigo-500" />
-          )}
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Le Saint Coran</h1>
+        <p className="text-gray-600 dark:text-gray-400">Explorer et écouter le Saint Coran</p>
       </div>
 
       {error && (
