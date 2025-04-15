@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-arabic {
+  font-family: 'Amiri', serif;
+}
+
+/* Styles pour la barre de navigation */
+.nav-item {
+  @apply flex flex-col items-center;
+}
+
+.nav-item svg {
+  @apply text-2xl text-green-600;
+}
+
+.nav-item span {
+  @apply text-sm mt-1;
+}
+
+/* Styles pour les cartes */
+.card {
+  @apply bg-white rounded-lg shadow p-4;
+}
+
+/* Styles pour les boutons */
+.btn {
+  @apply px-4 py-2 rounded-lg transition-colors;
+}
+
+.btn-primary {
+  @apply bg-green-600 text-white hover:bg-green-700;
+}
+
+/* Styles pour les messages d'erreur */
+.error-message {
+  @apply bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4;
+}
+
+/* Styles pour les indicateurs de chargement */
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto;
+}
