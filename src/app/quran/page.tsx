@@ -53,6 +53,7 @@ export default function QuranPage() {
   const currentIndexRef = useRef<number>(0);
   const [currentAyah, setCurrentAyah] = useState<number | null>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const reciterMenuRef = useRef<HTMLDivElement>(null);
 
   // Liste des récitateurs disponibles
   const reciters: Reciter[] = [
@@ -104,10 +105,16 @@ export default function QuranPage() {
       setTextSizeLevel(parseInt(savedTextSize));
     }
 
-    // Add click outside handler for settings panel
+    // Add click outside handler for both settings and reciter panels
     const handleClickOutside = (event: MouseEvent) => {
+      // Close settings panel if clicked outside
       if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
         setShowTextSizeControls(false);
+      }
+      
+      // Close reciter panel if clicked outside
+      if (reciterMenuRef.current && !reciterMenuRef.current.contains(event.target as Node)) {
+        setIsReciterMenuOpen(false);
       }
     };
     
@@ -517,22 +524,25 @@ export default function QuranPage() {
 
   // Fonction pour gérer le changement de récitateur
   const handleReciterChange = (reciterId: string) => {
-    // Ignorer si le récitateur n'est pas disponible
-    if (!availableReciters.includes(reciterId)) return;
+    // Better verification that the reciter is available
+    if (!availableReciters.includes(reciterId)) {
+      console.warn(`Reciter ${reciterId} is not available for this surah`);
+      return;
+    }
     
     setSelectedReciter(reciterId);
     setIsReciterMenuOpen(false);
     
-    // Sauvegarder la préférence du récitateur
+    // Save the preference
     try {
       localStorage.setItem('selectedReciter', reciterId);
     } catch (error) {
-      console.error("Erreur lors de l'enregistrement du récitateur:", error);
+      console.error("Error saving reciter preference:", error);
     }
     
-    // Si une sourate est déjà sélectionnée, recharger ses versets avec le nouveau récitateur
+    // Reload ayahs with the new reciter if a surah is selected
     if (selectedSurah) {
-      // Arrêter l'audio en cours si nécessaire
+      // Stop current audio
       if (currentAudioRef.current) {
         currentAudioRef.current.pause();
         setPlayingAyah(null);
@@ -546,9 +556,20 @@ export default function QuranPage() {
   // Fonction pour vérifier la disponibilité d'un récitateur pour une sourate
   const checkReciterAvailability = async (reciterId: string, surahNumber: number) => {
     try {
-      const response = await axios.head(`https://api.alquran.cloud/v1/surah/${surahNumber}/${reciterId}`);
-      return response.status === 200;
+      // First try to check with HEAD request
+      try {
+        const response = await axios.head(`https://api.alquran.cloud/v1/surah/${surahNumber}/${reciterId}`);
+        return response.status === 200;
+      } catch (headError) {
+        // If HEAD fails, try a GET request to a specific ayah instead
+        const testResponse = await axios.get(`https://cdn.islamic.network/quran/audio/128/${reciterId}/${surahNumber}:1.mp3`, {
+          responseType: 'blob',
+          timeout: 5000 // 5-second timeout
+        });
+        return testResponse.status === 200;
+      }
     } catch (error) {
+      console.log(`Reciter ${reciterId} not available for surah ${surahNumber}`);
       return false;
     }
   };
@@ -561,22 +582,30 @@ export default function QuranPage() {
     if (selectedSurah) {
       const checkAllReciters = async () => {
         setIsReciterMenuOpen(false);
-        // Commencer avec un récitateur par défaut disponible pour toutes les sourates
-        const available = ['ar.alafasy']; // Alafasy est généralement disponible pour toutes les sourates
+        setAvailableReciters([]); // Clear the list first
         
-        // Vérifier la disponibilité pour les autres récitateurs
-        for (const reciter of reciters) {
-          if (reciter.identifier !== 'ar.alafasy') { // On a déjà ajouté Alafasy
-            const isAvailable = await checkReciterAvailability(reciter.identifier, selectedSurah.number);
-            if (isAvailable) {
-              available.push(reciter.identifier);
-            }
+        // Show loading state
+        const loadingReciters = ['ar.alafasy']; // Consider Alafasy always available initially
+        setAvailableReciters(loadingReciters);
+        
+        // Check each reciter in parallel
+        const reciterChecks = reciters.map(async reciter => {
+          if (reciter.identifier === 'ar.alafasy') return reciter.identifier; // Always include Alafasy
+          
+          const isAvailable = await checkReciterAvailability(reciter.identifier, selectedSurah.number);
+          if (isAvailable) {
+            return reciter.identifier;
           }
-        }
+          return null;
+        });
+        
+        // Wait for all checks to complete
+        const availableResults = await Promise.all(reciterChecks);
+        const available = availableResults.filter(id => id !== null) as string[];
         
         setAvailableReciters(available);
         
-        // Si le récitateur actuel n'est pas disponible, passer au premier disponible
+        // If current reciter is not available, switch to first available
         if (available.length > 0 && !available.includes(selectedReciter)) {
           handleReciterChange(available[0]);
         }
@@ -774,48 +803,67 @@ export default function QuranPage() {
               )}
             </button>
 
-            <div className="relative">
+            <div className="relative" ref={reciterMenuRef}>
               <button
-                onClick={() => setIsReciterMenuOpen(!isReciterMenuOpen)}
-                className="h-12 w-12 rounded-lg bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 flex items-center justify-center"
+                onClick={() => {
+                  setIsReciterMenuOpen(!isReciterMenuOpen);
+                  // Close other menu if open
+                  setShowTextSizeControls(false);
+                }}
+                className={`h-12 w-12 rounded-lg ${
+                  isReciterMenuOpen 
+                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                    : 'bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300'
+                } flex items-center justify-center`}
               >
                 <FaMicrophone size={16} />
               </button>
               
               {isReciterMenuOpen && (
                 <div className="absolute right-0 z-10 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                  {reciters.map(reciter => {
-                    const isAvailable = availableReciters.includes(reciter.identifier);
-                    return (
-                      <button
-                        key={reciter.identifier}
-                        onClick={() => isAvailable && handleReciterChange(reciter.identifier)}
-                        className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                          !isAvailable 
-                            ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-600' 
-                            : selectedReciter === reciter.identifier 
-                              ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' 
-                              : 'text-gray-700 dark:text-gray-300'
-                        }`}
-                        disabled={!isAvailable}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm">{reciter.name}</div>
-                            <div className="text-xs text-gray-500">{reciter.arabicName}</div>
+                  {availableReciters.length === 0 ? (
+                    <div className="p-3 text-center text-gray-500 dark:text-gray-400">
+                      <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                      Chargement des récitateurs...
+                    </div>
+                  ) : (
+                    reciters.map(reciter => {
+                      const isAvailable = availableReciters.includes(reciter.identifier);
+                      return (
+                        <button
+                          key={reciter.identifier}
+                          onClick={() => isAvailable && handleReciterChange(reciter.identifier)}
+                          className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                            !isAvailable 
+                              ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-600' 
+                              : selectedReciter === reciter.identifier 
+                                ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' 
+                                : 'text-gray-700 dark:text-gray-300'
+                          }`}
+                          disabled={!isAvailable}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="text-sm">{reciter.name}</div>
+                              <div className="text-xs text-gray-500">{reciter.arabicName}</div>
+                            </div>
+                            {!isAvailable && <span className="text-xs bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">Indisponible</span>}
                           </div>
-                          {!isAvailable && <span className="text-xs bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">Indisponible</span>}
-                        </div>
-                      </button>
-                    );
-                  })}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               )}
             </div>
 
             <div className="relative" ref={settingsRef}>
               <button
-                onClick={() => setShowTextSizeControls(!showTextSizeControls)}
+                onClick={() => {
+                  setShowTextSizeControls(!showTextSizeControls);
+                  // Close other menu if open
+                  setIsReciterMenuOpen(false);
+                }}
                 className={`h-12 w-12 rounded-lg ${
                   showTextSizeControls ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300'
                 } flex items-center justify-center`}
@@ -848,33 +896,32 @@ export default function QuranPage() {
                           Taille du texte
                         </span>
                       </div>
-                      <div className="mb-1 flex justify-between text-xs text-gray-500">
-                        <span>Petit</span>
-                        <span>Grand</span>
-                      </div>
-                      <input 
-                        type="range" 
-                        min="0" 
-                        max="4" 
-                        step="0.01"
-                        value={textSizeLevel} 
-                        onChange={handleTextSizeChange}
-                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        style={{
-                          background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${textSizeLevel / 4 * 100}%, #e5e7eb ${textSizeLevel / 4 * 100}%, #e5e7eb 100%)`,
-                        }}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                      />
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {textSizeLevel === 0 ? 'Très petit' : 
-                           textSizeLevel === 1 ? 'Petit' : 
-                           textSizeLevel === 2 ? 'Normal' : 
-                           textSizeLevel === 3 ? 'Grand' : 'Très grand'}
-                        </span>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {Math.floor(textSizeLevel) + 1}/5
+                      
+                      <div className="mt-2">
+                        <div className="flex justify-between px-1 mb-1">
+                          {[0, 1, 2, 3, 4].map(step => (
+                            <div 
+                              key={step}
+                              className={`w-1 h-3 rounded-full ${textSizeLevel >= step ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                            ></div>
+                          ))}
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="4" 
+                          step="1"
+                          value={textSizeLevel} 
+                          onChange={handleTextSizeChange}
+                          className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          style={{
+                            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${textSizeLevel / 4 * 100}%, #e5e7eb ${textSizeLevel / 4 * 100}%, #e5e7eb 100%)`,
+                          }}
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1 px-1">
+                          <span>Petit</span>
+                          <span>Normal</span>
+                          <span>Grand</span>
                         </div>
                       </div>
                     </div>
@@ -1022,4 +1069,4 @@ export default function QuranPage() {
       {selectedSurah ? renderSurahContent() : renderSurahsList()}
     </div>
   );
-} 
+}
