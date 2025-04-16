@@ -366,24 +366,40 @@ export default function QuranPage() {
   const handlePlayFullSurah = () => {
     if (!selectedSurah) return;
     
-    // Si l'audio est déjà en cours de lecture, le mettre en pause
-    if (isPlayingFullSurah) {
-      if (currentAudioRef.current) {
-        currentAudioRef.current.pause();
-        
-        // Sauvegarder l'état de lecture pour pouvoir reprendre plus tard
-        const currentTime = currentAudioRef.current.currentTime;
-        const duration = currentAudioRef.current.duration || 1;
-        const progress = currentTime / duration;
-        
-        if (selectedSurah) {
-          localStorage.setItem(`surah-${selectedSurah.number}-progress`, progress.toString());
-          localStorage.setItem(`surah-${selectedSurah.number}-time`, currentTime.toString());
-          localStorage.setItem(`surah-${selectedSurah.number}-paused`, "true");
-        }
-      }
+    // Déclarer startIndex au début de la fonction
+    let startIndex = 0;
+    
+    // Si déjà en lecture et qu'on appuie à nouveau, c'est pour mettre en pause
+    if (isPlayingFullSurah && audioElement) {
+      audioElement.pause();
       setIsPlayingFullSurah(false);
+      
+      // Sauvegarder l'état de lecture et l'avancement actuel
+      const currentProgress = audioProgress;
+      
+      // Stocker ces informations pour reprendre plus tard
+      savePlaybackState(selectedSurah.number, {
+        progress: currentProgress,
+        verseIndex: currentIndexRef.current,
+        surahNumber: selectedSurah.number,
+        isPaused: true
+      });
+      
       return;
+    }
+    
+    // Vérifier s'il y a un état de lecture sauvegardé
+    const savedState = getPlaybackState(selectedSurah.number);
+    
+    // Si nous avons un état sauvegardé et qu'il est en pause, reprendre la lecture
+    if (savedState && savedState.isPaused && savedState.surahNumber === selectedSurah.number) {
+      startIndex = savedState.verseIndex || 0;
+      // Ne pas remettre l'audio à zéro, reprendre là où on s'était arrêté
+      setAudioProgress(savedState.progress || 0);
+    } else {
+      // Nouvel état, commencer du début
+      startIndex = 0;
+      setAudioProgress(0);
     }
     
     // Arrêter l'audio en cours si nécessaire
@@ -392,130 +408,118 @@ export default function QuranPage() {
       setPlayingAyah(null);
     }
     
+    // Créer un nouvel élément audio
+    const audio = new Audio();
+    setAudioElement(audio);
+    currentAudioRef.current = audio;
+    currentIndexRef.current = startIndex;
+    
     // Indiquer que l'audio est en cours de chargement
     setIsAudioLoading(true);
     
-    // Réinitialiser la référence audio si nécessaire
-    if (!currentAudioRef.current) {
-      currentAudioRef.current = new Audio();
-    }
-    
     const reciterBaseUrl = reciters.find(r => r.identifier === selectedReciter)?.identifier || 'ar.alafasy';
-    
-    // Vérifier si nous avons un état de lecture sauvegardé pour cette sourate
-    const savedPaused = localStorage.getItem(`surah-${selectedSurah.number}-paused`);
-    const savedTime = localStorage.getItem(`surah-${selectedSurah.number}-time`);
     
     // Construire l'URL pour la sourate complète (utiliser 128kbps pour un chargement plus rapide)
     const fullSurahUrl = `https://cdn.islamic.network/quran/audio-surah/128/${reciterBaseUrl}/${selectedSurah.number}.mp3`;
     
-    // Mettre à jour la source audio
-    if (currentAudioRef.current) {
-      // Configurer les événements d'audio avant de définir la source
-      currentAudioRef.current.onloadstart = () => {
-        setIsAudioLoading(true);
-      };
+    // Configurer les événements d'audio avant de définir la source
+    audio.onloadstart = () => {
+      setIsAudioLoading(true);
+    };
+    
+    audio.oncanplaythrough = () => {
+      setIsAudioLoading(false);
+    };
+    
+    audio.onwaiting = () => {
+      setIsAudioLoading(true);
+    };
+    
+    audio.onplaying = () => {
+      setIsAudioLoading(false);
+      setIsPlayingFullSurah(true);
+    };
+    
+    audio.onerror = (e) => {
+      console.error('Erreur audio:', e);
+      setIsAudioLoading(false);
+      setIsPlayingFullSurah(false);
+    };
+    
+    audio.onended = () => {
+      setIsPlayingFullSurah(false);
+      setIsAudioLoading(false);
       
-      currentAudioRef.current.oncanplaythrough = () => {
-        setIsAudioLoading(false);
-      };
-      
-      currentAudioRef.current.onwaiting = () => {
-        setIsAudioLoading(true);
-      };
-      
-      currentAudioRef.current.onplaying = () => {
-        setIsAudioLoading(false);
-        setIsPlayingFullSurah(true);
-      };
-      
-      currentAudioRef.current.onerror = (e) => {
-        console.error('Erreur audio:', e);
-        setIsAudioLoading(false);
-        setIsPlayingFullSurah(false);
-      };
-      
-      currentAudioRef.current.onended = () => {
-        setIsPlayingFullSurah(false);
-        setIsAudioLoading(false);
-        
-        // Réinitialiser les états quand la lecture est terminée
-        if (selectedSurah) {
-          localStorage.removeItem(`surah-${selectedSurah.number}-paused`);
-          localStorage.removeItem(`surah-${selectedSurah.number}-time`);
-          localStorage.removeItem(`surah-${selectedSurah.number}-progress`);
-        }
-      };
-      
-      currentAudioRef.current.ontimeupdate = () => {
-        if (currentAudioRef.current && selectedSurah) {
-          const currentTime = currentAudioRef.current.currentTime;
-          const duration = currentAudioRef.current.duration || 1;
-          const progress = currentTime / duration;
-          
-          setAudioProgress(progress);
-          
-          // Mise à jour périodique pour sauvegarder la progression
-          if (Math.floor(currentTime) % 5 === 0) { // Sauvegarder toutes les 5 secondes environ
-            localStorage.setItem(`surah-${selectedSurah.number}-time`, currentTime.toString());
-            localStorage.setItem(`surah-${selectedSurah.number}-progress`, progress.toString());
-          }
-        }
-      };
-      
-      // Définir la source après avoir configuré tous les écouteurs d'événements
-      currentAudioRef.current.src = fullSurahUrl;
-      
-      // Si nous étions en train de lire cette sourate et que nous l'avons mise en pause, reprendre
-      if (savedPaused === "true" && savedTime) {
-        const timeToStart = parseFloat(savedTime);
-        if (!isNaN(timeToStart)) {
-          currentAudioRef.current.currentTime = timeToStart;
-        }
-      } else {
-        // Sinon commencer du début
-        currentAudioRef.current.currentTime = 0;
-        
-        // Réinitialiser l'état sauvegardé
-        if (selectedSurah) {
-          localStorage.removeItem(`surah-${selectedSurah.number}-paused`);
-          localStorage.removeItem(`surah-${selectedSurah.number}-time`);
-          localStorage.removeItem(`surah-${selectedSurah.number}-progress`);
-        }
+      // Réinitialiser les états quand la lecture est terminée
+      if (selectedSurah) {
+        clearPlaybackState(selectedSurah.number);
       }
-      
-      // Jouer l'audio
-      try {
-        // Sur iOS, nous devons utiliser une approche différente pour la lecture après un événement utilisateur
-        const playPromise = currentAudioRef.current.play();
+    };
+    
+    audio.ontimeupdate = () => {
+      if (audio && selectedSurah) {
+        const currentTime = audio.currentTime;
+        const duration = audio.duration || 1;
+        const progress = currentTime / duration;
         
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            // La lecture a démarré avec succès
-            setIsPlayingFullSurah(true);
-            setIsAudioLoading(false);
-          }).catch(err => {
-            console.error('Erreur lors de la lecture:', err);
-            
-            // Sur iOS Safari, nous pouvons avoir besoin d'un interaction utilisateur
-            // Nous allons donc essayer de charger l'audio sans le jouer
-            if (currentAudioRef.current) {
-              currentAudioRef.current.load();
-            }
-            setIsPlayingFullSurah(false);
-            setIsAudioLoading(false);
+        setAudioProgress(progress);
+        
+        // Mise à jour périodique pour sauvegarder la progression
+        if (Math.floor(currentTime) % 5 === 0) { // Sauvegarder toutes les 5 secondes environ
+          savePlaybackState(selectedSurah.number, {
+            progress: progress,
+            verseIndex: currentIndexRef.current,
+            surahNumber: selectedSurah.number,
+            isPaused: false,
+            time: currentTime
           });
         }
-      } catch (err) {
-        console.error('Erreur de lecture:', err);
-        setIsPlayingFullSurah(false);
-        setIsAudioLoading(false);
       }
+    };
+    
+    // Définir la source après avoir configuré tous les écouteurs d'événements
+    audio.src = fullSurahUrl;
+    
+    // Si nous avons un état sauvegardé avec une position spécifique
+    if (savedState && savedState.time) {
+      const timeToStart = parseFloat(savedState.time.toString());
+      if (!isNaN(timeToStart)) {
+        audio.currentTime = timeToStart;
+      }
+    }
+    
+    // Jouer l'audio
+    try {
+      // Sur iOS, nous devons utiliser une approche différente pour la lecture après un événement utilisateur
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          // La lecture a démarré avec succès
+          setIsPlayingFullSurah(true);
+          setIsAudioLoading(false);
+        }).catch(err => {
+          console.error('Erreur lors de la lecture:', err);
+          
+          // Sur iOS Safari, nous pouvons avoir besoin d'un interaction utilisateur
+          // Nous allons donc essayer de charger l'audio sans le jouer
+          audio.load();
+          setIsPlayingFullSurah(false);
+          setIsAudioLoading(false);
+        });
+      }
+    } catch (err) {
+      console.error('Erreur de lecture:', err);
+      setIsPlayingFullSurah(false);
+      setIsAudioLoading(false);
     }
   };
 
   // Fonction pour gérer le changement de récitateur
   const handleReciterChange = (reciterId: string) => {
+    // Ignorer si le récitateur n'est pas disponible
+    if (!availableReciters.includes(reciterId)) return;
+    
     setSelectedReciter(reciterId);
     setIsReciterMenuOpen(false);
     
@@ -743,7 +747,7 @@ export default function QuranPage() {
           <div className="flex items-center justify-between gap-3 mb-6">
             <button
               onClick={handlePlayFullSurah}
-              className={`flex-1 px-4 py-3 rounded-xl flex items-center justify-center space-x-3 transition-colors ${
+              className={`h-14 flex-1 px-4 py-3 rounded-xl flex items-center justify-center space-x-3 transition-colors ${
                 isAudioLoading 
                   ? 'bg-yellow-100/70 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400' 
                   : isPlayingFullSurah 
@@ -772,7 +776,7 @@ export default function QuranPage() {
             <div className="relative">
               <button
                 onClick={() => setIsReciterMenuOpen(!isReciterMenuOpen)}
-                className="h-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 flex items-center justify-center"
+                className="h-14 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 flex items-center justify-center"
               >
                 <FaMicrophone size={20} />
                 <FaChevronDown size={12} className="ml-2" />
@@ -780,20 +784,31 @@ export default function QuranPage() {
               
               {isReciterMenuOpen && (
                 <div className="absolute right-0 z-10 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
-                  {reciters
-                    .filter(reciter => availableReciters.includes(reciter.identifier))
-                    .map(reciter => (
+                  {reciters.map(reciter => {
+                    const isAvailable = availableReciters.includes(reciter.identifier);
+                    return (
                       <button
                         key={reciter.identifier}
-                        onClick={() => handleReciterChange(reciter.identifier)}
+                        onClick={() => isAvailable && handleReciterChange(reciter.identifier)}
                         className={`w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                          selectedReciter === reciter.identifier ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'
+                          !isAvailable 
+                            ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-600' 
+                            : selectedReciter === reciter.identifier 
+                              ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' 
+                              : 'text-gray-700 dark:text-gray-300'
                         }`}
+                        disabled={!isAvailable}
                       >
-                        <div>{reciter.name}</div>
-                        <div className="text-xs text-gray-500">{reciter.arabicName}</div>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div>{reciter.name}</div>
+                            <div className="text-xs text-gray-500">{reciter.arabicName}</div>
+                          </div>
+                          {!isAvailable && <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">Indisponible</span>}
+                        </div>
                       </button>
-                    ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -801,7 +816,7 @@ export default function QuranPage() {
             <div className="relative" ref={settingsRef}>
               <button
                 onClick={() => setShowTextSizeControls(!showTextSizeControls)}
-                className={`h-full px-4 py-3 rounded-xl ${
+                className={`h-14 px-4 py-3 rounded-xl ${
                   showTextSizeControls ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300'
                 } flex items-center justify-center`}
               >
