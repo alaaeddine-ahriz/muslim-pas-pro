@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { FaPlay, FaPause, FaSearch, FaBookOpen, FaInfoCircle, FaSun, FaMoon, FaArrowLeft, FaMicrophone, FaChevronDown, FaLanguage, FaFont, FaPlus, FaMinus } from 'react-icons/fa';
+import { FaPlay, FaPause, FaSearch, FaBookOpen, FaInfoCircle, FaArrowLeft, FaMicrophone, FaChevronDown, FaLanguage, FaFont, FaPlus, FaMinus, FaCog } from 'react-icons/fa';
 import axios from 'axios';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -52,6 +52,7 @@ export default function QuranPage() {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentIndexRef = useRef<number>(0);
   const [currentAyah, setCurrentAyah] = useState<number | null>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
 
   // Liste des récitateurs disponibles
   const reciters: Reciter[] = [
@@ -96,6 +97,24 @@ export default function QuranPage() {
         }
       });
     }
+
+    // Load saved text size
+    const savedTextSize = localStorage.getItem('textSizeLevel');
+    if (savedTextSize) {
+      setTextSizeLevel(parseInt(savedTextSize));
+    }
+
+    // Add click outside handler for settings panel
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowTextSizeControls(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -608,28 +627,25 @@ export default function QuranPage() {
 
   const increaseTextSize = () => {
     if (textSizeLevel < 4) {
-      setTextSizeLevel(textSizeLevel + 1);
-      localStorage.setItem('quran-text-size', (textSizeLevel + 1).toString());
+      const newSize = textSizeLevel + 1;
+      setTextSizeLevel(newSize);
+      localStorage.setItem('textSizeLevel', newSize.toString());
     }
   };
 
   const decreaseTextSize = () => {
     if (textSizeLevel > 0) {
-      setTextSizeLevel(textSizeLevel - 1);
-      localStorage.setItem('quran-text-size', (textSizeLevel - 1).toString());
+      const newSize = textSizeLevel - 1;
+      setTextSizeLevel(newSize);
+      localStorage.setItem('textSizeLevel', newSize.toString());
     }
   };
 
-  // Load the saved text size from localStorage
-  useEffect(() => {
-    const savedTextSize = localStorage.getItem('quran-text-size');
-    if (savedTextSize) {
-      const size = parseInt(savedTextSize);
-      if (!isNaN(size) && size >= 0 && size <= 4) {
-        setTextSizeLevel(size);
-      }
-    }
-  }, []);
+  const handleTextSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSize = parseInt(e.target.value);
+    setTextSizeLevel(newSize);
+    localStorage.setItem('textSizeLevel', newSize.toString());
+  };
 
   const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!currentAudioRef.current || !isPlayingFullSurah) return;
@@ -702,150 +718,156 @@ export default function QuranPage() {
     <div className="min-h-screen pb-16">
       <button
         onClick={() => setSelectedSurah(null)}
-        className="flex items-center text-gray-400 mb-6 hover:text-gray-200 transition-colors"
+        className="flex items-center text-gray-600 dark:text-gray-400 mb-6 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
       >
         <FaArrowLeft className="mr-2" /> Retour à la liste des sourates
       </button>
 
       {selectedSurah && (
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800/50 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
                 {selectedSurah.englishName}
               </h1>
-              <p className="text-lg text-gray-300 mt-1">{selectedSurah.englishNameTranslation}</p>
+              <p className="text-lg text-gray-600 dark:text-gray-300 mt-1">{selectedSurah.englishNameTranslation}</p>
             </div>
             <div className="text-right">
-              <h2 className="font-arabic text-4xl text-white mb-1">{selectedSurah.name}</h2>
-              <p className="text-sm text-gray-400">
+              <h2 className="font-arabic text-4xl text-gray-800 dark:text-white mb-1">{selectedSurah.name}</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {selectedSurah.revelationType === 'Meccan' ? 'Mecquoise' : 'Médinoise'} • {selectedSurah.numberOfAyahs} versets
               </p>
             </div>
           </div>
           
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div className="flex-1 min-w-[250px]">
-              <button
-                onClick={handlePlayFullSurah}
-                className={`w-full px-6 py-3 rounded-xl flex items-center justify-center space-x-4 transition-colors ${
-                  isAudioLoading 
-                    ? 'bg-yellow-500/20 text-yellow-400' 
-                    : isPlayingFullSurah 
-                      ? 'bg-red-500/20 text-red-400' 
-                      : 'bg-emerald-500/20 text-emerald-400'
-                }`}
-              >
-                {isAudioLoading ? (
-                  <>
-                    <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-lg font-medium">Chargement...</span>
-                  </>
-                ) : isPlayingFullSurah ? (
-                  <>
-                    <FaPause size={20} />
-                    <span className="text-lg font-medium">Pause</span>
-                  </>
-                ) : (
-                  <>
-                    <FaPlay size={20} />
-                    <span className="text-lg font-medium">Lire la sourate</span>
-                  </>
-                )}
-              </button>
-            </div>
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <button
+              onClick={handlePlayFullSurah}
+              className={`flex-1 px-4 py-3 rounded-xl flex items-center justify-center space-x-3 transition-colors ${
+                isAudioLoading 
+                  ? 'bg-yellow-100/70 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400' 
+                  : isPlayingFullSurah 
+                    ? 'bg-red-100/70 dark:bg-red-500/20 text-red-700 dark:text-red-400' 
+                    : 'bg-emerald-100/70 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+              }`}
+            >
+              {isAudioLoading ? (
+                <>
+                  <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-lg font-medium">Chargement...</span>
+                </>
+              ) : isPlayingFullSurah ? (
+                <>
+                  <FaPause size={20} />
+                  <span className="text-lg font-medium">Pause</span>
+                </>
+              ) : (
+                <>
+                  <FaPlay size={20} />
+                  <span className="text-lg font-medium">Lire</span>
+                </>
+              )}
+            </button>
 
-            <div className="flex-1 min-w-[250px]">
-              <div className="relative w-full">
-                <button
-                  onClick={() => setIsReciterMenuOpen(!isReciterMenuOpen)}
-                  className="w-full px-6 py-3 rounded-xl bg-gray-700/50 text-gray-300 flex items-center justify-center space-x-2"
-                >
-                  <FaMicrophone size={18} />
-                  <span className="text-lg">Récitateur</span>
-                  <FaChevronDown size={12} className="ml-2" />
-                </button>
-                
-                {isReciterMenuOpen && (
-                  <div className="absolute z-10 mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl shadow-lg">
-                    {reciters
-                      .filter(reciter => availableReciters.includes(reciter.identifier))
-                      .map(reciter => (
-                        <button
-                          key={reciter.identifier}
-                          onClick={() => handleReciterChange(reciter.identifier)}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors ${
-                            selectedReciter === reciter.identifier ? 'bg-emerald-900/30 text-emerald-400' : 'text-gray-300'
-                          }`}
-                        >
-                          <div>{reciter.name}</div>
-                          <div className="text-xs text-gray-500">{reciter.arabicName}</div>
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3 mb-6">
             <div className="relative">
               <button
-                onClick={() => setShowTextSizeControls(!showTextSizeControls)}
-                className={`p-3 rounded-lg flex items-center ${
-                  showTextSizeControls
-                    ? 'bg-purple-900/30 text-purple-400'
-                    : 'bg-gray-700/50 text-gray-300'
-                }`}
+                onClick={() => setIsReciterMenuOpen(!isReciterMenuOpen)}
+                className="h-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 flex items-center justify-center"
               >
-                <FaFont size={18} />
+                <FaMicrophone size={20} />
+                <FaChevronDown size={12} className="ml-2" />
               </button>
               
-              {showTextSizeControls && (
-                <div className="absolute left-0 bottom-full mb-2 p-3 bg-gray-800 rounded-lg shadow-lg border border-gray-700 flex items-center space-x-3 z-10">
-                  <button 
-                    onClick={decreaseTextSize} 
-                    disabled={textSizeLevel === 0}
-                    className={`p-2 rounded-lg ${textSizeLevel === 0 ? 'text-gray-600' : 'text-gray-300 hover:bg-gray-700'}`}
-                  >
-                    <FaMinus size={14} />
-                  </button>
-                  <span className="text-gray-400">Taille du texte</span>
-                  <button 
-                    onClick={increaseTextSize} 
-                    disabled={textSizeLevel === 4}
-                    className={`p-2 rounded-lg ${textSizeLevel === 4 ? 'text-gray-600' : 'text-gray-300 hover:bg-gray-700'}`}
-                  >
-                    <FaPlus size={14} />
-                  </button>
+              {isReciterMenuOpen && (
+                <div className="absolute right-0 z-10 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
+                  {reciters
+                    .filter(reciter => availableReciters.includes(reciter.identifier))
+                    .map(reciter => (
+                      <button
+                        key={reciter.identifier}
+                        onClick={() => handleReciterChange(reciter.identifier)}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                          selectedReciter === reciter.identifier ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        <div>{reciter.name}</div>
+                        <div className="text-xs text-gray-500">{reciter.arabicName}</div>
+                      </button>
+                    ))}
                 </div>
               )}
             </div>
-            
-            <button
-              onClick={() => setShowTranslation(!showTranslation)}
-              className={`p-3 rounded-lg ${
-                showTranslation 
-                  ? 'bg-blue-900/30 text-blue-400'
-                  : 'bg-gray-700/50 text-gray-300'
-              }`}
-            >
-              <FaLanguage size={18} />
-            </button>
 
-            <button
-              onClick={toggleTheme}
-              className="p-3 rounded-lg bg-gray-700/50 text-gray-300"
-            >
-              {theme === 'dark' ? <FaSun size={18} /> : <FaMoon size={18} />}
-            </button>
+            <div className="relative" ref={settingsRef}>
+              <button
+                onClick={() => setShowTextSizeControls(!showTextSizeControls)}
+                className={`h-full px-4 py-3 rounded-xl ${
+                  showTextSizeControls ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300'
+                } flex items-center justify-center`}
+              >
+                <FaCog size={20} />
+              </button>
+              
+              {showTextSizeControls && (
+                <div className="absolute right-0 top-full mt-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 w-64">
+                  <div className="flex flex-col space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-700 dark:text-gray-300 flex items-center">
+                        <FaLanguage size={18} className="mr-2" /> 
+                        Traduction
+                      </span>
+                      <button 
+                        onClick={() => setShowTranslation(!showTranslation)}
+                        className={`w-12 h-6 rounded-full flex items-center transition-colors ${
+                          showTranslation ? 'bg-blue-500 justify-end' : 'bg-gray-300 dark:bg-gray-600 justify-start'
+                        }`}
+                      >
+                        <span className={`w-5 h-5 rounded-full mx-0.5 ${showTranslation ? 'bg-white' : 'bg-gray-100 dark:bg-gray-400'}`}></span>
+                      </button>
+                    </div>
+                    
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-700 dark:text-gray-300 flex items-center">
+                          <FaFont size={16} className="mr-2" /> 
+                          Taille du texte
+                        </span>
+                      </div>
+                      <div className="mb-1 flex justify-between text-xs text-gray-500">
+                        <span>Petit</span>
+                        <span>Grand</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="4" 
+                        value={textSizeLevel} 
+                        onChange={handleTextSizeChange}
+                        className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                      />
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          Taille: {textSizeLevel === 0 ? 'Très petit' : 
+                                   textSizeLevel === 1 ? 'Petit' : 
+                                   textSizeLevel === 2 ? 'Normal' : 
+                                   textSizeLevel === 3 ? 'Grand' : 'Très grand'}
+                        </span>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {textSizeLevel + 1}/5
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
           {/* Barre de progression audio pour la sourate entière */}
           {isPlayingFullSurah && currentAudioRef.current && (
             <div className="mb-6 w-full">
               <div 
-                className="relative h-2 bg-gray-700 rounded-full overflow-hidden cursor-pointer"
+                className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden cursor-pointer"
                 onClick={handleProgressBarClick}
               >
                 <div 
@@ -853,7 +875,7 @@ export default function QuranPage() {
                   style={{ width: `${audioProgress * 100}%` }}
                 ></div>
               </div>
-              <div className="flex justify-between mt-2 text-sm text-gray-400">
+              <div className="flex justify-between mt-2 text-sm text-gray-500 dark:text-gray-400">
                 <span>{formatTime(currentAudioRef.current.currentTime)}</span>
                 <span>{currentAudioRef.current.duration ? formatTime(currentAudioRef.current.duration) : 'Chargement...'}</span>
               </div>
@@ -862,37 +884,37 @@ export default function QuranPage() {
 
           {loadingAyahs ? (
             <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-gray-700 border-t-emerald-500 rounded-full animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-emerald-200 dark:border-gray-700 border-t-emerald-500 rounded-full animate-spin"></div>
             </div>
           ) : error ? (
             <div className="text-center py-8 text-red-500">{error}</div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-4">
               {ayahs.map((ayah) => {
                 const textSize = getTextSize();
                 return (
                   <div 
                     key={ayah.number.toString()} 
                     id={`verse-${ayah.numberInSurah}`} 
-                    className={`pb-6 border-b border-gray-700/50 ${
-                      currentAyah === ayah.numberInSurah ? 'bg-emerald-900/10 rounded-lg p-4 -mx-4' : ''
-                    }`}
+                    className={`py-3 ${
+                      currentAyah === ayah.numberInSurah ? 'bg-emerald-50/70 dark:bg-emerald-900/10 rounded-lg px-3 -mx-3' : ''
+                    } ${ayah.numberInSurah !== ayahs.length ? 'border-b border-gray-200 dark:border-gray-700/30' : ''}`}
                   >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="bg-gray-800/70 text-emerald-400 font-medium rounded-full w-10 h-10 flex items-center justify-center">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="bg-emerald-50 dark:bg-gray-800/70 text-emerald-700 dark:text-emerald-400 font-medium rounded-full w-8 h-8 flex items-center justify-center text-xs">
                         {ayah.numberInSurah}
                       </div>
                       <button
                         aria-label={playingAyah === ayah.numberInSurah ? "Pause" : "Play"}
                         onClick={() => playingAyah === ayah.numberInSurah ? handleStopAudio() : handlePlayAudio(ayah.audio, ayah.numberInSurah)}
-                        className="bg-gray-800/70 text-emerald-400 rounded-full p-3"
+                        className="bg-emerald-50 dark:bg-gray-800/70 text-emerald-700 dark:text-emerald-400 rounded-full p-2"
                       >
-                        {playingAyah === ayah.numberInSurah ? <FaPause size={12} /> : <FaPlay size={12} />}
+                        {playingAyah === ayah.numberInSurah ? <FaPause size={10} /> : <FaPlay size={10} />}
                       </button>
                     </div>
-                    <p className={`text-right font-arabic leading-relaxed text-white py-2 ${textSize.arabic}`}>{ayah.text}</p>
+                    <p className={`text-right font-arabic leading-relaxed text-gray-800 dark:text-white py-1 ${textSize.arabic}`}>{ayah.text}</p>
                     {showTranslation && ayah.translation && (
-                      <p className={`mt-3 text-gray-300 leading-relaxed ${textSize.translation}`}>{ayah.translation}</p>
+                      <p className={`mt-2 text-gray-600 dark:text-gray-400 leading-relaxed ${textSize.translation}`}>{ayah.translation}</p>
                     )}
                   </div>
                 );
