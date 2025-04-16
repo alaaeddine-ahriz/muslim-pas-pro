@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Green background -->
+  <rect width="512" height="512" fill="#10b981" rx="128" ry="128" />
+  
+  <!-- Prayer dome shape -->
+  <path d="M256 120 C 160 120, 100 200, 100 300 L 412 300 C 412 200, 352 120, 256 120 Z" fill="white" />
+  
+  <!-- Minaret -->
+  <path d="M256 100 L 256 40 M 242 100 L 242 60 M 270 100 L 270 60" stroke="white" stroke-width="12" stroke-linecap="round" />
+  
+  <!-- Prayer mat -->
+  <rect x="150" y="300" width="212" height="150" rx="10" ry="10" fill="white" />
+  <path d="M160 320 L 352 320 M 160 350 L 352 350 M 160 380 L 352 380 M 160 410 L 352 410" stroke="#10b981" stroke-width="5" />
+</svg> 
