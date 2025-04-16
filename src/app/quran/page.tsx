@@ -699,160 +699,161 @@ export default function QuranPage() {
   );
 
   const renderSurahContent = () => (
-    <div>
+    <div className="min-h-screen pb-16">
       <button
         onClick={() => setSelectedSurah(null)}
-        className="flex items-center text-gray-600 dark:text-gray-400 mb-6 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+        className="flex items-center text-gray-400 mb-6 hover:text-gray-200 transition-colors"
       >
         <FaArrowLeft className="mr-2" /> Retour à la liste des sourates
       </button>
 
       {selectedSurah && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-6">
+          <div className="flex justify-between items-start mb-6">
             <div>
-              <h1 className="text-2xl font-semibold text-gray-800 dark:text-white flex items-center">
+              <h1 className="text-3xl font-bold text-white">
                 {selectedSurah.englishName}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">{selectedSurah.englishNameTranslation}</p>
+              <p className="text-lg text-gray-300 mt-1">{selectedSurah.englishNameTranslation}</p>
             </div>
             <div className="text-right">
-              <h2 className="font-arabic text-3xl text-gray-800 dark:text-white mb-1">{selectedSurah.name}</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <h2 className="font-arabic text-4xl text-white mb-1">{selectedSurah.name}</h2>
+              <p className="text-sm text-gray-400">
                 {selectedSurah.revelationType === 'Meccan' ? 'Mecquoise' : 'Médinoise'} • {selectedSurah.numberOfAyahs} versets
               </p>
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
-            <div className="flex items-center space-x-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex-1 min-w-[250px]">
               <button
                 onClick={handlePlayFullSurah}
-                className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
+                className={`w-full px-6 py-3 rounded-xl flex items-center justify-center space-x-4 transition-colors ${
                   isAudioLoading 
-                    ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400'
+                    ? 'bg-yellow-500/20 text-yellow-400' 
                     : isPlayingFullSurah 
-                      ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400' 
-                      : 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                      ? 'bg-red-500/20 text-red-400' 
+                      : 'bg-emerald-500/20 text-emerald-400'
                 }`}
               >
                 {isAudioLoading ? (
                   <>
-                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                    <span>Chargement...</span>
+                    <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-lg font-medium">Chargement...</span>
                   </>
                 ) : isPlayingFullSurah ? (
                   <>
-                    <FaPause size={16} />
-                    <span>Pause</span>
+                    <FaPause size={20} />
+                    <span className="text-lg font-medium">Pause</span>
                   </>
                 ) : (
                   <>
-                    <FaPlay size={16} />
-                    <span>Lire la sourate</span>
+                    <FaPlay size={20} />
+                    <span className="text-lg font-medium">Lire la sourate</span>
                   </>
                 )}
               </button>
+            </div>
 
-              <div className="relative inline-block">
+            <div className="flex-1 min-w-[250px]">
+              <div className="relative w-full">
                 <button
                   onClick={() => setIsReciterMenuOpen(!isReciterMenuOpen)}
-                  className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                  className="w-full px-6 py-3 rounded-xl bg-gray-700/50 text-gray-300 flex items-center justify-center space-x-2"
                 >
-                  <FaMicrophone size={16} />
-                  <span className="hidden sm:inline">{reciters.find(r => r.identifier === selectedReciter)?.name.split(' ')[0] || 'Récitateur'}</span>
-                  <span className="sm:hidden">Récitateur</span>
-                  <FaChevronDown size={12} className="ml-1" />
+                  <FaMicrophone size={18} />
+                  <span className="text-lg">Récitateur</span>
+                  <FaChevronDown size={12} className="ml-2" />
                 </button>
                 
                 {isReciterMenuOpen && (
-                  <div className="absolute z-10 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg w-64">
+                  <div className="absolute z-10 mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl shadow-lg">
                     {reciters
                       .filter(reciter => availableReciters.includes(reciter.identifier))
                       .map(reciter => (
                         <button
                           key={reciter.identifier}
                           onClick={() => handleReciterChange(reciter.identifier)}
-                          className={`w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                            selectedReciter === reciter.identifier ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : ''
+                          className={`w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors ${
+                            selectedReciter === reciter.identifier ? 'bg-emerald-900/30 text-emerald-400' : 'text-gray-300'
                           }`}
                         >
                           <div>{reciter.name}</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">{reciter.arabicName}</div>
+                          <div className="text-xs text-gray-500">{reciter.arabicName}</div>
                         </button>
                       ))}
                   </div>
                 )}
               </div>
             </div>
-            
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <div className="relative">
-                <button
-                  onClick={() => setShowTextSizeControls(!showTextSizeControls)}
-                  className={`p-2 rounded-lg flex items-center ${
-                    showTextSizeControls
-                      ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  <FaFont size={18} />
-                </button>
-                
-                {showTextSizeControls && (
-                  <div className="absolute right-0 mt-2 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 flex items-center space-x-2 z-10">
-                    <button 
-                      onClick={decreaseTextSize} 
-                      disabled={textSizeLevel === 0}
-                      className={`p-2 rounded-lg ${textSizeLevel === 0 ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                    >
-                      <FaMinus size={14} />
-                    </button>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Taille du texte</span>
-                    <button 
-                      onClick={increaseTextSize} 
-                      disabled={textSizeLevel === 4}
-                      className={`p-2 rounded-lg ${textSizeLevel === 4 ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                    >
-                      <FaPlus size={14} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              
+          </div>
+          
+          <div className="flex items-center space-x-3 mb-6">
+            <div className="relative">
               <button
-                onClick={() => setShowTranslation(!showTranslation)}
-                className={`p-2 rounded-lg ${
-                  showTranslation 
-                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                onClick={() => setShowTextSizeControls(!showTextSizeControls)}
+                className={`p-3 rounded-lg flex items-center ${
+                  showTextSizeControls
+                    ? 'bg-purple-900/30 text-purple-400'
+                    : 'bg-gray-700/50 text-gray-300'
                 }`}
               >
-                <FaLanguage size={18} />
+                <FaFont size={18} />
               </button>
-
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
-              >
-                {theme === 'dark' ? <FaSun size={18} /> : <FaMoon size={18} />}
-              </button>
+              
+              {showTextSizeControls && (
+                <div className="absolute left-0 bottom-full mb-2 p-3 bg-gray-800 rounded-lg shadow-lg border border-gray-700 flex items-center space-x-3 z-10">
+                  <button 
+                    onClick={decreaseTextSize} 
+                    disabled={textSizeLevel === 0}
+                    className={`p-2 rounded-lg ${textSizeLevel === 0 ? 'text-gray-600' : 'text-gray-300 hover:bg-gray-700'}`}
+                  >
+                    <FaMinus size={14} />
+                  </button>
+                  <span className="text-gray-400">Taille du texte</span>
+                  <button 
+                    onClick={increaseTextSize} 
+                    disabled={textSizeLevel === 4}
+                    className={`p-2 rounded-lg ${textSizeLevel === 4 ? 'text-gray-600' : 'text-gray-300 hover:bg-gray-700'}`}
+                  >
+                    <FaPlus size={14} />
+                  </button>
+                </div>
+              )}
             </div>
+            
+            <button
+              onClick={() => setShowTranslation(!showTranslation)}
+              className={`p-3 rounded-lg ${
+                showTranslation 
+                  ? 'bg-blue-900/30 text-blue-400'
+                  : 'bg-gray-700/50 text-gray-300'
+              }`}
+            >
+              <FaLanguage size={18} />
+            </button>
+
+            <button
+              onClick={toggleTheme}
+              className="p-3 rounded-lg bg-gray-700/50 text-gray-300"
+            >
+              {theme === 'dark' ? <FaSun size={18} /> : <FaMoon size={18} />}
+            </button>
           </div>
           
           {/* Barre de progression audio pour la sourate entière */}
           {isPlayingFullSurah && currentAudioRef.current && (
             <div className="mb-6 w-full">
               <div 
-                className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden cursor-pointer"
+                className="relative h-2 bg-gray-700 rounded-full overflow-hidden cursor-pointer"
                 onClick={handleProgressBarClick}
               >
                 <div 
-                  className="absolute left-0 top-0 h-full bg-emerald-500 dark:bg-emerald-400 transition-all duration-300"
+                  className="absolute left-0 top-0 h-full bg-emerald-500 transition-all duration-300"
                   style={{ width: `${audioProgress * 100}%` }}
                 ></div>
               </div>
-              <div className="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex justify-between mt-2 text-sm text-gray-400">
                 <span>{formatTime(currentAudioRef.current.currentTime)}</span>
                 <span>{currentAudioRef.current.duration ? formatTime(currentAudioRef.current.duration) : 'Chargement...'}</span>
               </div>
@@ -861,31 +862,37 @@ export default function QuranPage() {
 
           {loadingAyahs ? (
             <div className="flex justify-center py-12">
-              <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-500 rounded-full animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-gray-700 border-t-emerald-500 rounded-full animate-spin"></div>
             </div>
           ) : error ? (
             <div className="text-center py-8 text-red-500">{error}</div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-8">
               {ayahs.map((ayah) => {
                 const textSize = getTextSize();
                 return (
-                  <div key={ayah.number.toString()} id={`verse-${ayah.numberInSurah}`} className={`pb-4 border-b border-gray-100 dark:border-gray-800 ${currentAyah === ayah.numberInSurah ? 'bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg p-3 -mx-3' : ''}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium rounded-full w-8 h-8 flex items-center justify-center text-sm">
+                  <div 
+                    key={ayah.number.toString()} 
+                    id={`verse-${ayah.numberInSurah}`} 
+                    className={`pb-6 border-b border-gray-700/50 ${
+                      currentAyah === ayah.numberInSurah ? 'bg-emerald-900/10 rounded-lg p-4 -mx-4' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="bg-gray-800/70 text-emerald-400 font-medium rounded-full w-10 h-10 flex items-center justify-center">
                         {ayah.numberInSurah}
                       </div>
                       <button
                         aria-label={playingAyah === ayah.numberInSurah ? "Pause" : "Play"}
                         onClick={() => playingAyah === ayah.numberInSurah ? handleStopAudio() : handlePlayAudio(ayah.audio, ayah.numberInSurah)}
-                        className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2"
+                        className="bg-gray-800/70 text-emerald-400 rounded-full p-3"
                       >
-                        {playingAyah === ayah.numberInSurah ? <FaPause size={10} /> : <FaPlay size={10} />}
+                        {playingAyah === ayah.numberInSurah ? <FaPause size={12} /> : <FaPlay size={12} />}
                       </button>
                     </div>
-                    <p className={`text-right font-arabic leading-loose text-gray-800 dark:text-gray-200 ${textSize.arabic}`}>{ayah.text}</p>
+                    <p className={`text-right font-arabic leading-relaxed text-white py-2 ${textSize.arabic}`}>{ayah.text}</p>
                     {showTranslation && ayah.translation && (
-                      <p className={`mt-2 text-gray-700 dark:text-gray-300 leading-relaxed ${textSize.translation}`}>{ayah.translation}</p>
+                      <p className={`mt-3 text-gray-300 leading-relaxed ${textSize.translation}`}>{ayah.translation}</p>
                     )}
                   </div>
                 );

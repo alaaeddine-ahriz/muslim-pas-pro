@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
 import BottomNavigation from "@/components/BottomNavigation";
@@ -14,19 +14,20 @@ export const metadata: Metadata = {
   title: 'Muslim Prayer App',
   description: 'Application pour les prières musulmanes, le Coran et la direction de la Qibla',
   manifest: '/manifest.json',
-  themeColor: '#10b981',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Muslim Prayer App',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-    viewportFit: 'cover'
-  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#10b981',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover'
 };
 
 export default function RootLayout({
@@ -42,8 +43,6 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Muslim Prayer App" />
-        <meta name="theme-color" content="#10b981" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         
         <script
           dangerouslySetInnerHTML={{
