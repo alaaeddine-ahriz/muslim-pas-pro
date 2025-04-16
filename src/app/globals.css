@@ -6,7 +6,8 @@
 
 @layer utilities {
   .font-arabic {
-    font-family: 'Scheherazade New', serif;
+    font-family: 'Scheherazade New', 'Traditional Arabic', 'Amiri', serif;
+    direction: rtl;
   }
   
   @keyframes pulse-slow {
