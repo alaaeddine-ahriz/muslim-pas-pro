@@ -646,9 +646,10 @@ export default function QuranPage() {
   };
 
   const handleTextSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSize = parseInt(e.target.value);
+    const newSize = parseFloat(e.target.value);
     setTextSizeLevel(newSize);
-    localStorage.setItem('textSizeLevel', newSize.toString());
+    // Store only integer values in localStorage to maintain compatibility
+    localStorage.setItem('textSizeLevel', Math.round(newSize).toString());
   };
 
   const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -744,10 +745,10 @@ export default function QuranPage() {
             </div>
           </div>
           
-          <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center justify-between gap-2 mb-6">
             <button
               onClick={handlePlayFullSurah}
-              className={`h-14 flex-1 px-4 py-3 rounded-xl flex items-center justify-center space-x-3 transition-colors ${
+              className={`h-12 flex-1 px-3 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors ${
                 isAudioLoading 
                   ? 'bg-yellow-100/70 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400' 
                   : isPlayingFullSurah 
@@ -757,18 +758,18 @@ export default function QuranPage() {
             >
               {isAudioLoading ? (
                 <>
-                  <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-lg font-medium">Chargement...</span>
+                  <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-base font-medium">Chargement...</span>
                 </>
               ) : isPlayingFullSurah ? (
                 <>
-                  <FaPause size={20} />
-                  <span className="text-lg font-medium">Pause</span>
+                  <FaPause size={16} />
+                  <span className="text-base font-medium">Pause</span>
                 </>
               ) : (
                 <>
-                  <FaPlay size={20} />
-                  <span className="text-lg font-medium">Lire</span>
+                  <FaPlay size={16} />
+                  <span className="text-base font-medium">Lire</span>
                 </>
               )}
             </button>
@@ -776,21 +777,20 @@ export default function QuranPage() {
             <div className="relative">
               <button
                 onClick={() => setIsReciterMenuOpen(!isReciterMenuOpen)}
-                className="h-14 px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 flex items-center justify-center"
+                className="h-12 w-12 rounded-lg bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 flex items-center justify-center"
               >
-                <FaMicrophone size={20} />
-                <FaChevronDown size={12} className="ml-2" />
+                <FaMicrophone size={16} />
               </button>
               
               {isReciterMenuOpen && (
-                <div className="absolute right-0 z-10 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg">
+                <div className="absolute right-0 z-10 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
                   {reciters.map(reciter => {
                     const isAvailable = availableReciters.includes(reciter.identifier);
                     return (
                       <button
                         key={reciter.identifier}
                         onClick={() => isAvailable && handleReciterChange(reciter.identifier)}
-                        className={`w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                        className={`w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
                           !isAvailable 
                             ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-gray-600' 
                             : selectedReciter === reciter.identifier 
@@ -801,10 +801,10 @@ export default function QuranPage() {
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <div>{reciter.name}</div>
+                            <div className="text-sm">{reciter.name}</div>
                             <div className="text-xs text-gray-500">{reciter.arabicName}</div>
                           </div>
-                          {!isAvailable && <span className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded-full">Indisponible</span>}
+                          {!isAvailable && <span className="text-xs bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">Indisponible</span>}
                         </div>
                       </button>
                     );
@@ -816,35 +816,35 @@ export default function QuranPage() {
             <div className="relative" ref={settingsRef}>
               <button
                 onClick={() => setShowTextSizeControls(!showTextSizeControls)}
-                className={`h-14 px-4 py-3 rounded-xl ${
+                className={`h-12 w-12 rounded-lg ${
                   showTextSizeControls ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300'
                 } flex items-center justify-center`}
               >
-                <FaCog size={20} />
+                <FaCog size={16} />
               </button>
               
               {showTextSizeControls && (
-                <div className="absolute right-0 top-full mt-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 w-64">
-                  <div className="flex flex-col space-y-4">
+                <div className="absolute right-0 top-full mt-2 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 w-64">
+                  <div className="flex flex-col space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-700 dark:text-gray-300 flex items-center">
-                        <FaLanguage size={18} className="mr-2" /> 
+                      <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
+                        <FaLanguage size={16} className="mr-2" /> 
                         Traduction
                       </span>
                       <button 
                         onClick={() => setShowTranslation(!showTranslation)}
-                        className={`w-12 h-6 rounded-full flex items-center transition-colors ${
+                        className={`w-10 h-5 rounded-full flex items-center transition-colors ${
                           showTranslation ? 'bg-blue-500 justify-end' : 'bg-gray-300 dark:bg-gray-600 justify-start'
                         }`}
                       >
-                        <span className={`w-5 h-5 rounded-full mx-0.5 ${showTranslation ? 'bg-white' : 'bg-gray-100 dark:bg-gray-400'}`}></span>
+                        <span className={`w-4 h-4 rounded-full mx-0.5 ${showTranslation ? 'bg-white' : 'bg-gray-100 dark:bg-gray-400'}`}></span>
                       </button>
                     </div>
                     
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-gray-700 dark:text-gray-300 flex items-center">
-                          <FaFont size={16} className="mr-2" /> 
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
+                          <FaFont size={14} className="mr-2" /> 
                           Taille du texte
                         </span>
                       </div>
@@ -856,19 +856,25 @@ export default function QuranPage() {
                         type="range" 
                         min="0" 
                         max="4" 
+                        step="0.01"
                         value={textSizeLevel} 
                         onChange={handleTextSizeChange}
                         className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        style={{
+                          background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${textSizeLevel / 4 * 100}%, #e5e7eb ${textSizeLevel / 4 * 100}%, #e5e7eb 100%)`,
+                        }}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
                       />
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          Taille: {textSizeLevel === 0 ? 'Très petit' : 
-                                   textSizeLevel === 1 ? 'Petit' : 
-                                   textSizeLevel === 2 ? 'Normal' : 
-                                   textSizeLevel === 3 ? 'Grand' : 'Très grand'}
+                      <div className="flex justify-between items-center mt-1">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {textSizeLevel === 0 ? 'Très petit' : 
+                           textSizeLevel === 1 ? 'Petit' : 
+                           textSizeLevel === 2 ? 'Normal' : 
+                           textSizeLevel === 3 ? 'Grand' : 'Très grand'}
                         </span>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {textSizeLevel + 1}/5
+                          {Math.floor(textSizeLevel) + 1}/5
                         </div>
                       </div>
                     </div>
@@ -880,9 +886,9 @@ export default function QuranPage() {
           
           {/* Barre de progression audio pour la sourate entière */}
           {isPlayingFullSurah && currentAudioRef.current && (
-            <div className="mb-6 w-full">
+            <div className="mb-4 w-full">
               <div 
-                className="relative h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden cursor-pointer"
+                className="relative h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden cursor-pointer"
                 onClick={handleProgressBarClick}
               >
                 <div 
@@ -890,7 +896,7 @@ export default function QuranPage() {
                   style={{ width: `${audioProgress * 100}%` }}
                 ></div>
               </div>
-              <div className="flex justify-between mt-2 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
                 <span>{formatTime(currentAudioRef.current.currentTime)}</span>
                 <span>{currentAudioRef.current.duration ? formatTime(currentAudioRef.current.duration) : 'Chargement...'}</span>
               </div>
