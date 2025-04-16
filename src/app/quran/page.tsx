@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { FaPlay, FaPause, FaSearch, FaBookOpen, FaInfoCircle, FaSun, FaMoon, FaArrowLeft, FaMicrophone, FaChevronDown, FaLanguage } from 'react-icons/fa';
+import { FaPlay, FaPause, FaSearch, FaBookOpen, FaInfoCircle, FaSun, FaMoon, FaArrowLeft, FaMicrophone, FaChevronDown, FaLanguage, FaFont, FaPlus, FaMinus } from 'react-icons/fa';
 import axios from 'axios';
 import { useTheme } from '@/context/ThemeContext';
 
@@ -40,11 +40,14 @@ export default function QuranPage() {
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPlayingFullSurah, setIsPlayingFullSurah] = useState(false);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [currentAyahIndex, setCurrentAyahIndex] = useState<number | null>(null);
   const [selectedReciter, setSelectedReciter] = useState<string>('ar.alafasy');
   const [isReciterMenuOpen, setIsReciterMenuOpen] = useState(false);
   const [audioProgress, setAudioProgress] = useState<number>(0);
   const [showTranslation, setShowTranslation] = useState<boolean>(true);
+  const [textSizeLevel, setTextSizeLevel] = useState<number>(2); // 0: small, 1: medium, 2: normal, 3: large, 4: larger
+  const [showTextSizeControls, setShowTextSizeControls] = useState<boolean>(false);
   const { theme, toggleTheme } = useTheme();
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentIndexRef = useRef<number>(0);
@@ -370,6 +373,9 @@ export default function QuranPage() {
       setPlayingAyah(null);
     }
     
+    // Indiquer que l'audio est en cours de chargement
+    setIsAudioLoading(true);
+    
     // Réinitialiser la référence audio si nécessaire
     if (!currentAudioRef.current) {
       currentAudioRef.current = new Audio();
@@ -385,64 +391,90 @@ export default function QuranPage() {
     const fullSurahUrl = `https://cdn.islamic.network/quran/audio-surah/128/${reciterBaseUrl}/${selectedSurah.number}.mp3`;
     
     // Mettre à jour la source audio
-    currentAudioRef.current.src = fullSurahUrl;
-    
-    // Si nous étions en train de lire cette sourate et que nous l'avons mise en pause, reprendre
-    if (savedPaused === "true" && savedTime) {
-      const timeToStart = parseFloat(savedTime);
-      if (!isNaN(timeToStart)) {
-        currentAudioRef.current.currentTime = timeToStart;
-      }
-    } else {
-      // Sinon commencer du début
-      currentAudioRef.current.currentTime = 0;
+    if (currentAudioRef.current) {
+      // Configurer les événements d'audio avant de définir la source
+      currentAudioRef.current.onloadstart = () => {
+        setIsAudioLoading(true);
+      };
       
-      // Réinitialiser l'état sauvegardé
-      if (selectedSurah) {
-        localStorage.removeItem(`surah-${selectedSurah.number}-paused`);
-        localStorage.removeItem(`surah-${selectedSurah.number}-time`);
-        localStorage.removeItem(`surah-${selectedSurah.number}-progress`);
-      }
-    }
-    
-    // Configurer les événements de l'audio
-    currentAudioRef.current.onended = () => {
-      setIsPlayingFullSurah(false);
+      currentAudioRef.current.oncanplaythrough = () => {
+        setIsAudioLoading(false);
+      };
       
-      // Réinitialiser les états quand la lecture est terminée
-      if (selectedSurah) {
-        localStorage.removeItem(`surah-${selectedSurah.number}-paused`);
-        localStorage.removeItem(`surah-${selectedSurah.number}-time`);
-        localStorage.removeItem(`surah-${selectedSurah.number}-progress`);
-      }
-    };
-    
-    currentAudioRef.current.ontimeupdate = () => {
-      if (currentAudioRef.current && selectedSurah) {
-        const currentTime = currentAudioRef.current.currentTime;
-        const duration = currentAudioRef.current.duration || 1;
-        const progress = currentTime / duration;
+      currentAudioRef.current.onwaiting = () => {
+        setIsAudioLoading(true);
+      };
+      
+      currentAudioRef.current.onplaying = () => {
+        setIsAudioLoading(false);
+        setIsPlayingFullSurah(true);
+      };
+      
+      currentAudioRef.current.onerror = (e) => {
+        console.error('Erreur audio:', e);
+        setIsAudioLoading(false);
+        setIsPlayingFullSurah(false);
+      };
+      
+      currentAudioRef.current.onended = () => {
+        setIsPlayingFullSurah(false);
+        setIsAudioLoading(false);
         
-        setAudioProgress(progress);
+        // Réinitialiser les états quand la lecture est terminée
+        if (selectedSurah) {
+          localStorage.removeItem(`surah-${selectedSurah.number}-paused`);
+          localStorage.removeItem(`surah-${selectedSurah.number}-time`);
+          localStorage.removeItem(`surah-${selectedSurah.number}-progress`);
+        }
+      };
+      
+      currentAudioRef.current.ontimeupdate = () => {
+        if (currentAudioRef.current && selectedSurah) {
+          const currentTime = currentAudioRef.current.currentTime;
+          const duration = currentAudioRef.current.duration || 1;
+          const progress = currentTime / duration;
+          
+          setAudioProgress(progress);
+          
+          // Mise à jour périodique pour sauvegarder la progression
+          if (Math.floor(currentTime) % 5 === 0) { // Sauvegarder toutes les 5 secondes environ
+            localStorage.setItem(`surah-${selectedSurah.number}-time`, currentTime.toString());
+            localStorage.setItem(`surah-${selectedSurah.number}-progress`, progress.toString());
+          }
+        }
+      };
+      
+      // Définir la source après avoir configuré tous les écouteurs d'événements
+      currentAudioRef.current.src = fullSurahUrl;
+      
+      // Si nous étions en train de lire cette sourate et que nous l'avons mise en pause, reprendre
+      if (savedPaused === "true" && savedTime) {
+        const timeToStart = parseFloat(savedTime);
+        if (!isNaN(timeToStart)) {
+          currentAudioRef.current.currentTime = timeToStart;
+        }
+      } else {
+        // Sinon commencer du début
+        currentAudioRef.current.currentTime = 0;
         
-        // Mise à jour périodique pour sauvegarder la progression
-        if (Math.floor(currentTime) % 5 === 0) { // Sauvegarder toutes les 5 secondes environ
-          localStorage.setItem(`surah-${selectedSurah.number}-time`, currentTime.toString());
-          localStorage.setItem(`surah-${selectedSurah.number}-progress`, progress.toString());
+        // Réinitialiser l'état sauvegardé
+        if (selectedSurah) {
+          localStorage.removeItem(`surah-${selectedSurah.number}-paused`);
+          localStorage.removeItem(`surah-${selectedSurah.number}-time`);
+          localStorage.removeItem(`surah-${selectedSurah.number}-progress`);
         }
       }
-    };
-    
-    // Jouer l'audio
-    try {
-      if (currentAudioRef.current) {
-        // Sur iOS, nous devons utiliser une approche différente pour le lecture après un événement utilisateur
+      
+      // Jouer l'audio
+      try {
+        // Sur iOS, nous devons utiliser une approche différente pour la lecture après un événement utilisateur
         const playPromise = currentAudioRef.current.play();
         
         if (playPromise !== undefined) {
           playPromise.then(() => {
             // La lecture a démarré avec succès
             setIsPlayingFullSurah(true);
+            setIsAudioLoading(false);
           }).catch(err => {
             console.error('Erreur lors de la lecture:', err);
             
@@ -452,15 +484,14 @@ export default function QuranPage() {
               currentAudioRef.current.load();
             }
             setIsPlayingFullSurah(false);
-            
-            // Afficher un message à l'utilisateur (optionnel)
-            alert("Appuyez à nouveau sur le bouton de lecture pour commencer la lecture.");
+            setIsAudioLoading(false);
           });
         }
+      } catch (err) {
+        console.error('Erreur de lecture:', err);
+        setIsPlayingFullSurah(false);
+        setIsAudioLoading(false);
       }
-    } catch (err) {
-      console.error('Erreur de lecture:', err);
-      setIsPlayingFullSurah(false);
     }
   };
 
@@ -506,13 +537,20 @@ export default function QuranPage() {
   useEffect(() => {
     if (selectedSurah) {
       const checkAllReciters = async () => {
-        const available = [];
+        setIsReciterMenuOpen(false);
+        // Commencer avec un récitateur par défaut disponible pour toutes les sourates
+        const available = ['ar.alafasy']; // Alafasy est généralement disponible pour toutes les sourates
+        
+        // Vérifier la disponibilité pour les autres récitateurs
         for (const reciter of reciters) {
-          const isAvailable = await checkReciterAvailability(reciter.identifier, selectedSurah.number);
-          if (isAvailable) {
-            available.push(reciter.identifier);
+          if (reciter.identifier !== 'ar.alafasy') { // On a déjà ajouté Alafasy
+            const isAvailable = await checkReciterAvailability(reciter.identifier, selectedSurah.number);
+            if (isAvailable) {
+              available.push(reciter.identifier);
+            }
           }
         }
+        
         setAvailableReciters(available);
         
         // Si le récitateur actuel n'est pas disponible, passer au premier disponible
@@ -555,6 +593,68 @@ export default function QuranPage() {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const getTextSize = () => {
+    switch (textSizeLevel) {
+      case 0: return { arabic: 'text-lg', translation: 'text-xs' };
+      case 1: return { arabic: 'text-xl', translation: 'text-sm' };
+      case 2: return { arabic: 'text-2xl', translation: 'text-base' };
+      case 3: return { arabic: 'text-3xl', translation: 'text-lg' };
+      case 4: return { arabic: 'text-4xl', translation: 'text-xl' };
+      default: return { arabic: 'text-2xl', translation: 'text-base' };
+    }
+  };
+
+  const increaseTextSize = () => {
+    if (textSizeLevel < 4) {
+      setTextSizeLevel(textSizeLevel + 1);
+      localStorage.setItem('quran-text-size', (textSizeLevel + 1).toString());
+    }
+  };
+
+  const decreaseTextSize = () => {
+    if (textSizeLevel > 0) {
+      setTextSizeLevel(textSizeLevel - 1);
+      localStorage.setItem('quran-text-size', (textSizeLevel - 1).toString());
+    }
+  };
+
+  // Load the saved text size from localStorage
+  useEffect(() => {
+    const savedTextSize = localStorage.getItem('quran-text-size');
+    if (savedTextSize) {
+      const size = parseInt(savedTextSize);
+      if (!isNaN(size) && size >= 0 && size <= 4) {
+        setTextSizeLevel(size);
+      }
+    }
+  }, []);
+
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!currentAudioRef.current || !isPlayingFullSurah) return;
+    
+    // Obtenir les dimensions et la position du clic par rapport à la barre de progression
+    const progressBar = e.currentTarget;
+    const rect = progressBar.getBoundingClientRect();
+    const clickPosition = e.clientX - rect.left;
+    const progressBarWidth = rect.width;
+    
+    // Calculer la position relative du clic (0 à 1)
+    const seekPosition = clickPosition / progressBarWidth;
+    
+    // Appliquer la position à l'audio
+    const duration = currentAudioRef.current.duration;
+    if (duration) {
+      currentAudioRef.current.currentTime = duration * seekPosition;
+      setAudioProgress(seekPosition);
+      
+      // Sauvegarder l'état de lecture
+      if (selectedSurah) {
+        localStorage.setItem(`surah-${selectedSurah.number}-time`, (duration * seekPosition).toString());
+        localStorage.setItem(`surah-${selectedSurah.number}-progress`, seekPosition.toString());
+      }
+    }
   };
 
   const renderSurahsList = () => (
@@ -624,17 +724,24 @@ export default function QuranPage() {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-            <div className="flex items-center space-x-4 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+            <div className="flex items-center space-x-3 w-full sm:w-auto">
               <button
                 onClick={handlePlayFullSurah}
                 className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                  isPlayingFullSurah 
-                    ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400' 
-                    : 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                  isAudioLoading 
+                    ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400'
+                    : isPlayingFullSurah 
+                      ? 'bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400' 
+                      : 'bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                 }`}
               >
-                {isPlayingFullSurah ? (
+                {isAudioLoading ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    <span>Chargement...</span>
+                  </>
+                ) : isPlayingFullSurah ? (
                   <>
                     <FaPause size={16} />
                     <span>Pause</span>
@@ -650,44 +757,78 @@ export default function QuranPage() {
               <div className="relative inline-block">
                 <button
                   onClick={() => setIsReciterMenuOpen(!isReciterMenuOpen)}
-                  className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
+                  className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center space-x-2"
                 >
                   <FaMicrophone size={16} />
-                  <span className="hidden sm:inline">{reciters.find(r => r.identifier === selectedReciter)?.name || 'Récitateur'}</span>
+                  <span className="hidden sm:inline">{reciters.find(r => r.identifier === selectedReciter)?.name.split(' ')[0] || 'Récitateur'}</span>
                   <span className="sm:hidden">Récitateur</span>
-                  <FaChevronDown size={12} />
+                  <FaChevronDown size={12} className="ml-1" />
                 </button>
                 
                 {isReciterMenuOpen && (
                   <div className="absolute z-10 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg w-64">
-                    {reciters.map(reciter => (
-                      <button
-                        key={reciter.identifier}
-                        onClick={() => handleReciterChange(reciter.identifier)}
-                        className={`w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                          selectedReciter === reciter.identifier ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : ''
-                        }`}
-                      >
-                        <div>{reciter.name}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{reciter.arabicName}</div>
-                      </button>
-                    ))}
+                    {reciters
+                      .filter(reciter => availableReciters.includes(reciter.identifier))
+                      .map(reciter => (
+                        <button
+                          key={reciter.identifier}
+                          onClick={() => handleReciterChange(reciter.identifier)}
+                          className={`w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                            selectedReciter === reciter.identifier ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : ''
+                          }`}
+                        >
+                          <div>{reciter.name}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">{reciter.arabicName}</div>
+                        </button>
+                      ))}
                   </div>
                 )}
               </div>
             </div>
             
-            <div className="flex items-center space-x-3 w-full sm:w-auto">
+            <div className="flex items-center space-x-2 w-full sm:w-auto">
+              <div className="relative">
+                <button
+                  onClick={() => setShowTextSizeControls(!showTextSizeControls)}
+                  className={`p-2 rounded-lg flex items-center ${
+                    showTextSizeControls
+                      ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                  }`}
+                >
+                  <FaFont size={18} />
+                </button>
+                
+                {showTextSizeControls && (
+                  <div className="absolute right-0 mt-2 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 flex items-center space-x-2 z-10">
+                    <button 
+                      onClick={decreaseTextSize} 
+                      disabled={textSizeLevel === 0}
+                      className={`p-2 rounded-lg ${textSizeLevel === 0 ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    >
+                      <FaMinus size={14} />
+                    </button>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Taille du texte</span>
+                    <button 
+                      onClick={increaseTextSize} 
+                      disabled={textSizeLevel === 4}
+                      className={`p-2 rounded-lg ${textSizeLevel === 4 ? 'text-gray-400 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    >
+                      <FaPlus size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              
               <button
                 onClick={() => setShowTranslation(!showTranslation)}
-                className={`px-3 py-2 rounded-lg flex items-center space-x-2 ${
+                className={`p-2 rounded-lg ${
                   showTranslation 
                     ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                 }`}
               >
                 <FaLanguage size={18} />
-                <span className="hidden sm:inline">Traduction</span>
               </button>
 
               <button
@@ -702,7 +843,10 @@ export default function QuranPage() {
           {/* Barre de progression audio pour la sourate entière */}
           {isPlayingFullSurah && currentAudioRef.current && (
             <div className="mb-6 w-full">
-              <div className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div 
+                className="relative h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden cursor-pointer"
+                onClick={handleProgressBarClick}
+              >
                 <div 
                   className="absolute left-0 top-0 h-full bg-emerald-500 dark:bg-emerald-400 transition-all duration-300"
                   style={{ width: `${audioProgress * 100}%` }}
@@ -723,26 +867,29 @@ export default function QuranPage() {
             <div className="text-center py-8 text-red-500">{error}</div>
           ) : (
             <div className="space-y-6">
-              {ayahs.map((ayah) => (
-                <div key={ayah.number.toString()} className="pb-4 border-b border-gray-100 dark:border-gray-800">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium rounded-full w-8 h-8 flex items-center justify-center text-sm">
-                      {ayah.numberInSurah}
+              {ayahs.map((ayah) => {
+                const textSize = getTextSize();
+                return (
+                  <div key={ayah.number.toString()} id={`verse-${ayah.numberInSurah}`} className={`pb-4 border-b border-gray-100 dark:border-gray-800 ${currentAyah === ayah.numberInSurah ? 'bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg p-3 -mx-3' : ''}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 font-medium rounded-full w-8 h-8 flex items-center justify-center text-sm">
+                        {ayah.numberInSurah}
+                      </div>
+                      <button
+                        aria-label={playingAyah === ayah.numberInSurah ? "Pause" : "Play"}
+                        onClick={() => playingAyah === ayah.numberInSurah ? handleStopAudio() : handlePlayAudio(ayah.audio, ayah.numberInSurah)}
+                        className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2"
+                      >
+                        {playingAyah === ayah.numberInSurah ? <FaPause size={10} /> : <FaPlay size={10} />}
+                      </button>
                     </div>
-                    <button
-                      aria-label={playingAyah === ayah.numberInSurah ? "Pause" : "Play"}
-                      onClick={() => playingAyah === ayah.numberInSurah ? handleStopAudio() : handlePlayAudio(ayah.audio, ayah.numberInSurah)}
-                      className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full p-2"
-                    >
-                      {playingAyah === ayah.numberInSurah ? <FaPause size={10} /> : <FaPlay size={10} />}
-                    </button>
+                    <p className={`text-right font-arabic leading-loose text-gray-800 dark:text-gray-200 ${textSize.arabic}`}>{ayah.text}</p>
+                    {showTranslation && ayah.translation && (
+                      <p className={`mt-2 text-gray-700 dark:text-gray-300 leading-relaxed ${textSize.translation}`}>{ayah.translation}</p>
+                    )}
                   </div>
-                  <p className="text-right font-arabic text-xl leading-loose text-gray-800 dark:text-gray-200">{ayah.text}</p>
-                  {showTranslation && ayah.translation && (
-                    <p className="mt-2 text-gray-700 dark:text-gray-300 text-sm leading-relaxed">{ayah.translation}</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
