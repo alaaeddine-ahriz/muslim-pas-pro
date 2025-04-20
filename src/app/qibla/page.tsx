@@ -1,20 +1,21 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { Coordinates } from 'adhan';
-import { FaCompass, FaLocationArrow, FaMountain, FaExclamationTriangle, FaRedo } from 'react-icons/fa';
-import Image from 'next/image';
+import { Compass, MapPin, Loader2, RotateCw } from 'lucide-react';
 
-// Coordonnées de la Kaaba
-const MECCA_COORDS = new Coordinates(21.4225, 39.8262);
+// Coordinates of Kaaba
+const MECCA_COORDS = {
+  latitude: 21.4225,
+  longitude: 39.8262
+};
 
-// Extension de l'interface DeviceOrientationEvent pour Safari
+// Extended interface for Safari's DeviceOrientation
 interface ExtendedDeviceOrientationEvent extends DeviceOrientationEvent {
   webkitCompassHeading?: number;
 }
 
 export default function QiblaPage() {
-  const [location, setLocation] = useState<Coordinates | null>(null);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [qiblaAngle, setQiblaAngle] = useState<number | null>(null);
   const [compassHeading, setCompassHeading] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,19 +29,22 @@ export default function QiblaPage() {
   const arrowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Demander la localisation
+    // Request location
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const coords = new Coordinates(position.coords.latitude, position.coords.longitude);
+          const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
           setLocation(coords);
           calculateQiblaAngle(coords);
           calculateDistance(coords);
           setLoading(false);
         },
         (err) => {
-          console.error("Erreur de géolocalisation:", err);
-          setError("Impossible d'accéder à votre localisation. Veuillez la saisir manuellement.");
+          console.error("Geolocation error:", err);
+          setError("Impossible d'accéder à votre position. Veuillez l'activer dans les paramètres de votre appareil.");
           setLoading(false);
         },
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -52,7 +56,7 @@ export default function QiblaPage() {
 
     setupDeviceOrientation();
 
-    // Nettoyage des écouteurs d'événements
+    // Clean up event listeners
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('deviceorientation', handleOrientation);
@@ -63,22 +67,22 @@ export default function QiblaPage() {
     };
   }, []);
 
-  // Mettre à jour la rotation de la boussole et de la flèche quand les valeurs changent
+  // Update compass rotation and arrow when values change
   useEffect(() => {
     if (compassHeading !== null && compassRef.current) {
-      // Rotate la boussole dans le sens opposé de la direction
+      // Rotate compass in opposite direction
       compassRef.current.style.transform = `rotate(${-compassHeading}deg)`;
     }
     
     if (qiblaAngle !== null && compassHeading !== null && arrowRef.current) {
-      // Calculer l'angle relatif entre la direction de la boussole et la Qibla
+      // Calculate relative angle between compass heading and Qibla
       const relativeAngle = qiblaAngle - compassHeading;
       arrowRef.current.style.transform = `rotate(${relativeAngle}deg)`;
       
-      // Mettre à jour la direction cardinale
+      // Update cardinal direction
       updateDirection(compassHeading);
       
-      // Vérifier si l'utilisateur est aligné avec la Qibla (à 5 degrés près)
+      // Check if user is aligned with Qibla (within 5 degrees)
       const alignmentDiff = Math.abs(relativeAngle % 360);
       const isNowAligned = alignmentDiff < 5 || alignmentDiff > 355;
       setIsAligned(isNowAligned);
@@ -92,7 +96,7 @@ export default function QiblaPage() {
   };
 
   const setupDeviceOrientation = async () => {
-    // Vérifier si l'API DeviceOrientationEvent est disponible
+    // Check if DeviceOrientationEvent API is available
     if (typeof window === 'undefined') return;
     
     if (!window.DeviceOrientationEvent) {
@@ -100,7 +104,7 @@ export default function QiblaPage() {
       return;
     }
 
-    // Pour iOS 13+ qui nécessite une demande d'autorisation explicite
+    // For iOS 13+ requiring explicit permission
     if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
       try {
         setPermissionState('requesting');
@@ -108,22 +112,19 @@ export default function QiblaPage() {
         setPermissionState(response);
         
         if (response === 'granted') {
-          // iOS utilise deviceorientation
           window.addEventListener('deviceorientation', handleOrientation);
         } else {
           setError("L'autorisation pour la boussole a été refusée.");
         }
       } catch (err) {
-        console.error("Erreur lors de la demande d'autorisation:", err);
+        console.error("Permission request error:", err);
         setError("Erreur lors de la demande d'autorisation pour la boussole.");
       }
     } else {
-      // Pour les autres navigateurs
-      // Essayer d'abord deviceorientationabsolute qui est plus précis
+      // For other browsers
       if ('ondeviceorientationabsolute' in window) {
         (window as any).addEventListener('deviceorientationabsolute', handleAbsoluteOrientation as EventListener);
       } else {
-        // Sinon utiliser deviceorientation standard
         (window as any).addEventListener('deviceorientation', handleOrientation);
       }
     }
@@ -136,14 +137,11 @@ export default function QiblaPage() {
         setPermissionState(response);
         
         if (response === 'granted') {
-          // Effacer d'abord l'erreur
           setError(null);
-          // iOS utilise deviceorientation
           window.addEventListener('deviceorientation', handleOrientation);
           
-          // Attendre un peu pour que les événements commencent à arriver
+          // Wait a bit for events to start arriving
           setTimeout(() => {
-            // Si après 1,5 seconde nous n'avons toujours pas de données, afficher un message
             if (compassHeading === null) {
               setError("La boussole ne semble pas envoyer de données. Essayez de bouger votre appareil ou de le calibrer.");
             }
@@ -152,45 +150,41 @@ export default function QiblaPage() {
           setError("L'autorisation pour la boussole a été refusée.");
         }
       } catch (err) {
-        console.error("Erreur lors de la demande d'autorisation:", err);
+        console.error("Permission request error:", err);
         setError("Erreur lors de la demande d'autorisation pour la boussole.");
       }
     } else {
-      // Pour les autres navigateurs, réessayer directement
       setupDeviceOrientation();
     }
   };
 
-  // Réinitialiser la boussole
+  // Reset compass
   const reinitCompass = () => {
     setupDeviceOrientation();
   };
 
-  // Les gestionnaires d'événements pour l'orientation
+  // Event handlers for orientation
   const handleAbsoluteOrientation = (event: DeviceOrientationEvent) => {
     if (event.alpha !== null) {
       setCompassHeading(event.alpha);
-      // Effacer le message d'erreur si les données sont reçues
       if (error) setError(null);
     }
   };
 
   const handleOrientation = (event: ExtendedDeviceOrientationEvent) => {
     if (event.webkitCompassHeading) {
-      // Safari iOS utilise webkitCompassHeading (0-360)
+      // Safari iOS uses webkitCompassHeading (0-360)
       setCompassHeading(event.webkitCompassHeading);
-      // Effacer le message d'erreur si les données sont reçues
       if (error) setError(null);
     } else if (event.alpha !== null) {
-      // Android et autres navigateurs utilisent alpha (0-360)
-      // On convertit pour avoir la même référence que webkitCompassHeading
+      // Android and other browsers use alpha (0-360)
+      // Convert to have same reference as webkitCompassHeading
       setCompassHeading(360 - event.alpha);
-      // Effacer le message d'erreur si les données sont reçues
       if (error) setError(null);
     }
   };
 
-  const calculateQiblaAngle = (coords: Coordinates) => {
+  const calculateQiblaAngle = (coords: { latitude: number; longitude: number }) => {
     const lat1 = coords.latitude * (Math.PI / 180);
     const lon1 = coords.longitude * (Math.PI / 180);
     const lat2 = MECCA_COORDS.latitude * (Math.PI / 180);
@@ -204,13 +198,13 @@ export default function QiblaPage() {
     setQiblaAngle(angle);
   };
 
-  const calculateDistance = (coords: Coordinates) => {
+  const calculateDistance = (coords: { latitude: number; longitude: number }) => {
     const lat1 = coords.latitude * (Math.PI / 180);
     const lon1 = coords.longitude * (Math.PI / 180);
     const lat2 = MECCA_COORDS.latitude * (Math.PI / 180);
     const lon2 = MECCA_COORDS.longitude * (Math.PI / 180);
 
-    const R = 6371; // Rayon de la Terre en km
+    const R = 6371; // Earth's radius in km
     const dLat = lat2 - lat1;
     const dLon = lon2 - lon1;
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -224,28 +218,26 @@ export default function QiblaPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 dark:border-emerald-400"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-6">
-      <div className="text-center mb-5">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-1">Direction de la Qibla</h1>
-        <p className="text-gray-600 dark:text-gray-400">Tournez-vous vers la Kaaba pour prier</p>
-      </div>
+    <div className="container mx-auto p-4 max-w-3xl">
+      <h1 className="text-2xl font-bold text-center mb-2">Direction de la Qibla</h1>
+      <p className="text-center text-gray-600 mb-6">Tournez-vous vers la Kaaba pour prier</p>
       
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-xl mb-6 shadow-sm">
+        <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6 shadow-sm">
           <div className="flex items-start">
-            <FaExclamationTriangle className="text-red-500 mt-1 mr-2 flex-shrink-0" />
+            <div className="text-red-500 mt-1 mr-2">⚠️</div>
             <div>
               <p>{error}</p>
               {permissionState !== 'granted' && (
                 <button 
                   onClick={requestOrientationPermission}
-                  className="mt-2 bg-red-100 hover:bg-red-200 dark:bg-red-800/30 dark:hover:bg-red-800/50 text-red-700 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="mt-2 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg text-sm font-medium"
                 >
                   Autoriser l'accès à la boussole
                 </button>
@@ -256,14 +248,14 @@ export default function QiblaPage() {
       )}
 
       {compassHeading === null && !error && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 p-4 rounded-xl mb-6 shadow-sm">
+        <div className="bg-yellow-50 text-yellow-700 p-4 rounded-lg mb-6 shadow-sm">
           <div className="flex items-start">
-            <FaExclamationTriangle className="text-yellow-500 mt-1 mr-2 flex-shrink-0" />
+            <div className="text-yellow-500 mt-1 mr-2">⚠️</div>
             <div>
               <p>La boussole n'est pas accessible. Sur certains appareils, vous devez activer la boussole dans les paramètres ou autoriser l'accès.</p>
               <button 
                 onClick={requestOrientationPermission}
-                className="mt-2 bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-800/30 dark:hover:bg-yellow-800/50 text-yellow-700 dark:text-yellow-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="mt-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-4 py-2 rounded-lg text-sm font-medium"
               >
                 Autoriser l'accès à la boussole
               </button>
@@ -272,77 +264,103 @@ export default function QiblaPage() {
         </div>
       )}
 
+      {location && (
+        <div className="text-center text-sm text-gray-600 mb-4">
+          Position actuelle: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+          <button 
+            onClick={() => {
+              setLoading(true);
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const coords = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                  };
+                  setLocation(coords);
+                  calculateQiblaAngle(coords);
+                  calculateDistance(coords);
+                  setLoading(false);
+                },
+                () => {
+                  setLoading(false);
+                }
+              );
+            }}
+            className="ml-2 text-green-600 hover:text-green-700 inline-flex items-center"
+          >
+            <MapPin className="w-3 h-3 mr-1" />
+            <span>Actualiser</span>
+          </button>
+        </div>
+      )}
+
       {qiblaAngle !== null && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm dark:shadow-gray-950/50 mb-6">
+        <div className="bg-white rounded-lg p-5 shadow-sm mb-6">
           <div className="flex items-center justify-center">
-            <div className="relative w-80 h-80">
-              {/* Cercle de la boussole */}
+            <div className="relative w-72 h-72">
+              {/* Compass circle */}
               <div 
-                className={`absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-700 transition-all duration-500 flex items-center justify-center ${
+                className={`absolute inset-0 rounded-full border-4 border-gray-200 flex items-center justify-center ${
                   isAligned 
-                    ? 'bg-gradient-to-br from-emerald-400 to-teal-500 dark:from-emerald-500 dark:to-teal-700 animate-pulse-slow shadow-lg' 
-                    : 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 shadow-inner'
+                    ? 'bg-gradient-to-br from-green-400 to-teal-500 animate-pulse' 
+                    : 'bg-gradient-to-br from-gray-50 to-gray-100'
                 }`}
               >
-                {/* Boussole rotative */}
+                {/* Rotating compass */}
                 <div 
                   ref={compassRef} 
                   className="w-full h-full relative transition-transform duration-200 ease-linear"
                 >
-                  {/* Image de la boussole */}
+                  {/* Compass image */}
                   <div className="absolute inset-0 flex justify-center items-center">
-                    <div className="relative w-64 h-64">
-                      <img 
-                        src="/compass-rose.png" 
-                        alt="Compass Rose"
-                        className="w-full h-full object-contain drop-shadow-md"
-                      />
-                    </div>
+                    <img 
+                      src="/compass-rose.svg" 
+                      alt="Compass Rose"
+                      className="w-56 h-56 drop-shadow-md"
+                    />
                   </div>
                 </div>
                 
-                {/* Direction textuelle actuelle */}
+                {/* Current direction text */}
                 <div className="absolute top-4 flex justify-center w-full z-10">
-                  <div className="rounded-lg px-4 py-1.5 text-center bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 shadow-md backdrop-blur-sm">
+                  <div className="rounded-lg px-4 py-1.5 text-center bg-white text-gray-700 shadow-md">
                     <p className="text-sm font-medium">{direction} <span className="text-xs ml-1 opacity-75">• {Math.round(compassHeading || 0)}°</span></p>
                   </div>
                 </div>
                 
-                {/* Flèche d'indication de la Qibla fixe (masquée mais gardée pour la rotation) */}
+                {/* Qibla direction arrow */}
                 <div 
                   ref={arrowRef}
-                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 transition-transform duration-200 ease-linear opacity-0"
+                  className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 transition-transform duration-200 ease-linear"
                 >
-                  <div className="absolute inset-0 w-full h-full flex justify-center">
-                    <div className="relative">
-                      <img 
-                        src="/kaaba-icon.png" 
-                        alt="Kaaba Direction"
-                        className="absolute w-12 h-12 -top-30 left-1/2 transform -translate-x-1/2"
-                      />
-                    </div>
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-[5.5rem]">
+                    <img 
+                      src="/kaaba-icon.svg" 
+                      alt="Kaaba Direction"
+                      className="h-12 w-12 drop-shadow-md"
+                    />
                   </div>
                 </div>
                 
-                {/* Bouton de réinitialisation */}
+                {/* Reset button */}
                 <button 
                   onClick={reinitCompass}
-                  className="absolute right-2 bottom-2 w-10 h-10 bg-white dark:bg-gray-700 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors z-10 shadow-md"
+                  className="absolute right-2 bottom-2 w-10 h-10 bg-white rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 z-10 shadow-md"
                 >
-                  <FaRedo size={16} />
+                  <RotateCw size={16} />
                 </button>
               </div>
             </div>
           </div>
           
-          <div className="flex justify-center mt-8 gap-6">
-            <div className="rounded-xl px-5 py-3 text-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 shadow-sm">
+          <div className="flex justify-center mt-6 gap-6">
+            <div className="rounded-lg px-5 py-3 text-center bg-green-50 text-green-700 shadow-sm">
               <p className="text-xs opacity-75 mb-1">Direction de la Qibla</p>
               <p className="text-xl font-semibold">{Math.round(qiblaAngle)}°</p>
             </div>
             
             {distance !== null && (
-              <div className="rounded-xl px-5 py-3 text-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 shadow-sm">
+              <div className="rounded-lg px-5 py-3 text-center bg-green-50 text-green-700 shadow-sm">
                 <p className="text-xs opacity-75 mb-1">Distance</p>
                 <p className="text-xl font-semibold">{distance} km</p>
               </div>
@@ -351,10 +369,10 @@ export default function QiblaPage() {
         </div>
       )}
       
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-600 dark:to-teal-600 p-5 rounded-xl shadow-sm text-white">
+      <div className="bg-gradient-to-r from-green-500 to-teal-500 p-5 rounded-lg shadow-sm text-white">
         <div className="flex items-start">
-          <div className="bg-white/20 p-3 rounded-lg mr-4 backdrop-blur-sm">
-            <FaMountain className="text-xl" />
+          <div className="bg-white/20 p-3 rounded-lg mr-4">
+            <Compass className="text-xl" />
           </div>
           <div>
             <h3 className="font-semibold mb-1">La Kaaba (الكعبة)</h3>

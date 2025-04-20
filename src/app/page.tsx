@@ -5,6 +5,8 @@ import { Coordinates, PrayerTimes, CalculationMethod } from 'adhan';
 import { FaMapMarkerAlt, FaCalendarAlt, FaMosque, FaClock, FaQuran, FaSun, FaMoon, FaCompass } from 'react-icons/fa';
 import Link from 'next/link';
 import { useTheme } from '@/context/ThemeContext';
+import { fetchNearbyMosques, Mosque } from '@/services/mawaqitApi';
+import { MapPin, Calendar, Clock, Book, Compass, Sun, Moon, X } from 'lucide-react';
 
 export default function Home() {
   const [prayerTimes, setPrayerTimes] = useState<PrayerTimes | null>(null);
@@ -15,6 +17,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [hijriDate, setHijriDate] = useState<string>('');
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState<boolean>(false);
+  const [nearbyMosques, setNearbyMosques] = useState<Mosque[]>([]);
+  const [isLoadingMosques, setIsLoadingMosques] = useState<boolean>(false);
+  const [selectedMosque, setSelectedMosque] = useState<Mosque | null>(null);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -34,6 +40,9 @@ export default function Home() {
             );
             const data = await response.json();
             setCityName(data.address.city || data.address.town || data.address.village || 'Votre position');
+            
+            // Load nearby mosques in background
+            loadNearbyMosques(position.coords.latitude, position.coords.longitude);
           } catch (err) {
             setCityName('Votre position');
           }
@@ -179,6 +188,46 @@ export default function Home() {
     }
   };
 
+  // Load nearby mosques
+  const loadNearbyMosques = async (latitude: number, longitude: number) => {
+    setIsLoadingMosques(true);
+    try {
+      const mosques = await fetchNearbyMosques(latitude, longitude);
+      setNearbyMosques(mosques);
+    } catch (error) {
+      console.error('Error loading nearby mosques:', error);
+    } finally {
+      setIsLoadingMosques(false);
+    }
+  };
+  
+  // Change location manually
+  const openLocationModal = () => {
+    setIsLocationModalOpen(true);
+    if (location && !nearbyMosques.length) {
+      loadNearbyMosques(location.latitude, location.longitude);
+    }
+  };
+  
+  // Close location modal
+  const closeLocationModal = () => {
+    setIsLocationModalOpen(false);
+  };
+  
+  // Handle mosque selection
+  const handleMosqueSelect = (mosque: Mosque) => {
+    setSelectedMosque(mosque);
+    
+    // Use Adhan library to calculate prayer times with the mosque location
+    const coords = new Coordinates(mosque.latitude, mosque.longitude);
+    setLocation(coords);
+    calculatePrayerTimes(coords);
+    setCityName(mosque.name);
+    
+    // Close the modal
+    closeLocationModal();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -194,7 +243,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
           <div className="mb-2 sm:mb-0">
             <div className="flex items-center mb-1">
-              <FaCalendarAlt className="mr-2 text-emerald-400" />
+              <Calendar className="mr-2 text-green-400" size={20} />
               <span>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
             </div>
             {hijriDate && (
@@ -203,46 +252,117 @@ export default function Home() {
               </div>
             )}
           </div>
-          {cityName && (
-            <div className="flex items-center">
-              <FaMapMarkerAlt className="mr-2 text-emerald-400" />
-              <span>{cityName}</span>
-            </div>
-          )}
+          <button 
+            onClick={openLocationModal}
+            className="flex items-center hover:text-green-400 transition-colors"
+          >
+            <MapPin className="mr-2 text-green-400" size={20} />
+            <span>{cityName || "Définir ma position"}</span>
+          </button>
         </div>
       </div>
       
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-xl mb-6 shadow-sm">
           <p>{error}</p>
-          <button className="mt-2 bg-red-100 hover:bg-red-200 dark:bg-red-800/30 dark:hover:bg-red-800/50 text-red-700 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <button 
+            onClick={openLocationModal}
+            className="mt-2 bg-red-100 hover:bg-red-200 dark:bg-red-800/30 dark:hover:bg-red-800/50 text-red-700 dark:text-red-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
             Définir manuellement
           </button>
         </div>
       )}
 
-      {/*
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <Link href="/quran">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm dark:shadow-gray-950/50 h-full flex flex-col items-center justify-center text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            <div className="mb-3 w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <FaQuran className="text-2xl text-emerald-600 dark:text-emerald-400" />
+      {/* Location selection modal */}
+      {isLocationModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full max-h-[80vh] overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Choisir une localisation</h2>
+              <button 
+                onClick={closeLocationModal}
+                className="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400"
+              >
+                <X size={24} />
+              </button>
             </div>
-            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Coran</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Lire et écouter le Coran</p>
-          </div>
-        </Link>
-        <Link href="/qibla">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm dark:shadow-gray-950/50 h-full flex flex-col items-center justify-center text-center hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            <div className="mb-3 w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <FaCompass className="text-2xl text-emerald-600 dark:text-emerald-400" />
+            
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        const coords = new Coordinates(position.coords.latitude, position.coords.longitude);
+                        setLocation(coords);
+                        calculatePrayerTimes(coords);
+                        loadNearbyMosques(position.coords.latitude, position.coords.longitude);
+                        fetch(
+                          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}&zoom=10`
+                        )
+                          .then(response => response.json())
+                          .then(data => {
+                            setCityName(data.address.city || data.address.town || data.address.village || 'Votre position');
+                          })
+                          .catch(() => setCityName('Votre position'))
+                          .finally(() => closeLocationModal());
+                      },
+                      (error) => {
+                        console.error('Error getting location:', error);
+                        setError("Impossible d'accéder à votre localisation. Veuillez sélectionner une mosquée dans la liste.");
+                      }
+                    );
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg"
+              >
+                <MapPin size={20} />
+                Utiliser ma position actuelle
+              </button>
             </div>
-            <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Qibla</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Direction de la prière</p>
+            
+            <div className="p-4">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Mosquées à proximité</h3>
+              
+              {isLoadingMosques ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                </div>
+              ) : nearbyMosques.length > 0 ? (
+                <div className="overflow-y-auto max-h-[40vh] space-y-2">
+                  {nearbyMosques.map(mosque => (
+                    <button
+                      key={mosque.id}
+                      onClick={() => handleMosqueSelect(mosque)}
+                      className="w-full text-left p-3 rounded-lg flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-800 dark:text-gray-200">{mosque.name}</div>
+                        {mosque.distance !== undefined && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {mosque.distance < 1
+                              ? `${(mosque.distance * 1000).toFixed(0)}m`
+                              : `${mosque.distance.toFixed(1)}km`}
+                            {mosque.address && ` • ${mosque.address}`}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  Aucune mosquée trouvée à proximité
+                </div>
+              )}
+            </div>
           </div>
-        </Link>
-      </div>
-      */}
+        </div>
+      )}
 
       {nextPrayer && (
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-600 dark:to-teal-600 rounded-xl p-5 mb-6 shadow-sm">

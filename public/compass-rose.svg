@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer circle -->
+  <circle cx="150" cy="150" r="145" fill="none" stroke="#E5E5E5" stroke-width="2"/>
+  
+  <!-- Inner circle -->
+  <circle cx="150" cy="150" r="120" fill="none" stroke="#E5E5E5" stroke-width="1"/>
+  
+  <!-- Cardinal directions lines -->
+  <line x1="150" y1="5" x2="150" y2="60" stroke="#333333" stroke-width="3"/>
+  <line x1="150" y1="295" x2="150" y2="240" stroke="#333333" stroke-width="1.5"/>
+  <line x1="5" y1="150" x2="60" y2="150" stroke="#333333" stroke-width="1.5"/>
+  <line x1="295" y1="150" x2="240" y2="150" stroke="#333333" stroke-width="1.5"/>
+  
+  <!-- Intercardinal direction lines -->
+  <line x1="221.24" y1="78.76" x2="185.36" y2="114.64" stroke="#777777" stroke-width="1"/>
+  <line x1="221.24" y1="221.24" x2="185.36" y2="185.36" stroke="#777777" stroke-width="1"/>
+  <line x1="78.76" y1="221.24" x2="114.64" y2="185.36" stroke="#777777" stroke-width="1"/>
+  <line x1="78.76" y1="78.76" x2="114.64" y2="114.64" stroke="#777777" stroke-width="1"/>
+  
+  <!-- Secondary direction lines -->
+  <line x1="105" y1="25" x2="132" y2="70" stroke="#AAAAAA" stroke-width="0.5"/>
+  <line x1="195" y1="25" x2="168" y2="70" stroke="#AAAAAA" stroke-width="0.5"/>
+  <line x1="25" y1="105" x2="70" y2="132" stroke="#AAAAAA" stroke-width="0.5"/>
+  <line x1="25" y1="195" x2="70" y2="168" stroke="#AAAAAA" stroke-width="0.5"/>
+  <line x1="105" y1="275" x2="132" y2="230" stroke="#AAAAAA" stroke-width="0.5"/>
+  <line x1="195" y1="275" x2="168" y2="230" stroke="#AAAAAA" stroke-width="0.5"/>
+  <line x1="275" y1="105" x2="230" y2="132" stroke="#AAAAAA" stroke-width="0.5"/>
+  <line x1="275" y1="195" x2="230" y2="168" stroke="#AAAAAA" stroke-width="0.5"/>
+  
+  <!-- Cardinal direction labels -->
+  <text x="150" y="30" text-anchor="middle" font-family="Arial" font-size="18" font-weight="bold" fill="#333333">N</text>
+  <text x="270" y="156" text-anchor="middle" font-family="Arial" font-size="18" font-weight="bold" fill="#333333">E</text>
+  <text x="150" y="275" text-anchor="middle" font-family="Arial" font-size="18" font-weight="bold" fill="#333333">S</text>
+  <text x="30" y="156" text-anchor="middle" font-family="Arial" font-size="18" font-weight="bold" fill="#333333">O</text>
+  
+  <!-- Intercardinal direction labels -->
+  <text x="210" y="90" text-anchor="middle" font-family="Arial" font-size="14" fill="#777777">NE</text>
+  <text x="210" y="215" text-anchor="middle" font-family="Arial" font-size="14" fill="#777777">SE</text>
+  <text x="90" y="215" text-anchor="middle" font-family="Arial" font-size="14" fill="#777777">SO</text>
+  <text x="90" y="90" text-anchor="middle" font-family="Arial" font-size="14" fill="#777777">NO</text>
+  
+  <!-- North pointer star -->
+  <polygon points="150,60 143,75 150,70 157,75" fill="#333333"/>
+  
+  <!-- Center point -->
+  <circle cx="150" cy="150" r="4" fill="#333333"/>
+</svg> 
